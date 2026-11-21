@@ -4,8 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/dev/component_gallery_screen.dart';
+import '../../features/auth/choose_role_screen.dart';
+import '../../features/auth/sign_in_screen.dart';
+import '../../features/auth/verify_code_screen.dart';
+import '../../features/learner/book_session_screen.dart';
+import '../../features/learner/home_screen.dart';
+import '../../features/learner/matches_screen.dart';
+import '../../features/learner/mentor_profile_screen.dart';
+import '../../features/learner/quiz_screen.dart';
+import '../../features/learner/timetable_screen.dart';
+import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/onboarding/splash_screen.dart';
-import '../../features/onboarding/welcome_screen.dart';
 import '../../shared/widgets/phase_placeholder.dart';
 import '../auth/app_session.dart';
 import '../auth/session_controller.dart';
@@ -41,32 +50,49 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.splash, builder: (_, _) => const SplashScreen()),
       GoRoute(
         path: Routes.onboarding,
-        builder: (_, _) => const WelcomeScreen(),
+        builder: (_, _) => const OnboardingScreen(),
       ),
-      GoRoute(
-        path: Routes.signIn,
-        builder: (_, _) => const Scaffold(
-          body: PhasePlaceholder(title: 'Sign in', screenId: 'L03', phase: 2),
-        ),
-      ),
+      GoRoute(path: Routes.signIn, builder: (_, _) => const SignInScreen()),
       GoRoute(
         path: Routes.verify,
-        builder: (_, _) => const Scaffold(
-          body: PhasePlaceholder(
-            title: 'Check your inbox',
-            screenId: 'L04',
-            phase: 2,
-          ),
-        ),
+        builder: (_, state) =>
+            VerifyCodeScreen(email: state.uri.queryParameters['email'] ?? ''),
       ),
       GoRoute(
         path: Routes.chooseRole,
+        builder: (_, _) => const ChooseRoleScreen(),
+      ),
+      // Learner full-screen flows, above the shell. Listed before the shell
+      // so their paths win over the /learner branch.
+      GoRoute(
+        path: Routes.learnerSetupTimetable,
+        builder: (_, _) => const TimetableScreen(setup: true),
+      ),
+      GoRoute(
+        path: Routes.learnerSetupQuiz,
+        builder: (_, _) => const QuizScreen(setup: true),
+      ),
+      GoRoute(path: Routes.learnerQuiz, builder: (_, _) => const QuizScreen()),
+      GoRoute(
+        path: '/learner/mentor/:id',
+        builder: (_, state) =>
+            MentorProfileScreen(mentorId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/learner/book/:id',
+        builder: (_, state) =>
+            BookSessionScreen(mentorId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: Routes.learnerCheckout,
         builder: (_, _) => const Scaffold(
           body: PhasePlaceholder(
-            title: 'How do you want to use SkillShift?',
-            screenId: 'L05',
-            phase: 2,
-            showSignOut: true,
+            title: 'Review and pay',
+            screenId: 'L12',
+            phase: 3,
+            description:
+                'Paid checkout with QRIS or a virtual account (Midtrans '
+                'sandbox) arrives in Phase 3. Free trials work now.',
           ),
         ),
       ),
@@ -105,20 +131,20 @@ StatefulShellRoute _learnerShell() => StatefulShellRoute.indexedStack(
   builder: (_, _, shell) =>
       AdaptiveShell(role: UserRole.learner, navigationShell: shell),
   branches: [
-    _tab(Routes.learnerHome, _ph('Home', 'L08 · T01', 2)),
-    _tab(Routes.learnerFind, _ph('Top 3 mentors', 'L09 · T02', 2)),
-    _tab(Routes.learnerTimetable, _ph('Timetable', 'L06 · T03', 2)),
-    _tab(Routes.learnerSessions, _ph('Sessions', 'L15', 3)),
+    _tab(Routes.learnerHome, const LearnerHomeScreen()),
+    _tab(Routes.learnerFind, const MatchesScreen()),
+    _tab(Routes.learnerTimetable, const TimetableScreen()),
+    _tab(Routes.learnerSessions, const LearnerSessionsScreen()),
     _tab(
       Routes.learnerProfile,
       _ph(
         'Profile',
         '—',
-        2,
+        6,
         signOut: true,
         description:
-            'Profile details arrive in Phase 2. Ratings '
-            'and chat are not part of this prototype.',
+            'Editing your profile is planned. Ratings and chat are not '
+            'part of this prototype.',
       ),
     ),
   ],

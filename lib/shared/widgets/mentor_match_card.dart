@@ -104,31 +104,40 @@ class MentorMatchCard extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: Radii.rSm,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    AppIcons.clock,
-                    size: 15,
-                    color: AppColors.primaryPressed,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    data.slotLabel,
-                    style: AppText.smallMedium.copyWith(
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: Radii.rSm,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      AppIcons.clock,
+                      size: 15,
                       color: AppColors.primaryPressed,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        data.slotLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.smallMedium.copyWith(
+                          color: AppColors.primaryPressed,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: Space.md),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [

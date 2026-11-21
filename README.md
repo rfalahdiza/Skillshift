@@ -9,7 +9,7 @@ Peer tutoring for Universitas Brawijaya (UB) students. First-year learners get m
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Theme and tokens, shared widgets, routing and role guards, adaptive shell, Supabase schema, RLS, seed | **Done** |
-| 2 | Learner core: L01–L11, matching Edge Function, Gemini tags and reasons | Planned |
+| 2 | Learner core: L01–L11, matching Edge Function, Gemini tags and reasons | **Done** (free-trial booking; paid checkout is Phase 3) |
 | 3 | Checkout, QRIS (Midtrans sandbox), booking confirmed, attendance: L12–L15 | Planned |
 | 4 | Mentor: M01–M05 | Planned |
 | 5 | Admin: AD01–AD04, A01–A03 | Planned |
@@ -33,9 +33,10 @@ flutter run --dart-define-from-file=.env
 
 VS Code: use the **SkillShift (debug)** launch configuration (`.vscode/launch.json`), which passes the same flag.
 
-Without a `.env` the app still runs: it shows the splash, then a welcome screen saying Supabase is not configured. In **debug builds** that screen also offers:
+Without a `.env` the app still runs: splash, onboarding, then the sign-in screen with a "Supabase is not configured" notice. In **debug builds** the sign-in screen also has **Dev tools**:
 
-- **Preview as learner / mentor / admin**: opens the role's navigation shell offline, marked with a "Dev preview" strip.
+- **Demo sign-in** with the seeded test accounts (needs `DEMO_PASSWORD` and a seeded database), so a demo does not depend on email delivery.
+- **Preview learner / mentor / admin**: the whole app offline with fake sample data, marked with a "Dev preview" strip. The learner flow (timetable, quiz, matches, profile, free-trial booking) works end to end here.
 - **Component gallery**: every shared widget next to the Figma design system.
 
 ### Local Supabase
@@ -46,7 +47,11 @@ Needs Docker Desktop (which needs WSL 2 on Windows).
 supabase start                      # prints the local URL and anon key
 dart run tool/gen_demo_seed.dart    # optional: demo password for seed accounts
 supabase db reset                   # applies migrations + seed.sql (+ seed.local.sql)
+cp supabase/functions/.env.example supabase/functions/.env   # add GEMINI_API_KEY
+supabase functions serve --env-file supabase/functions/.env
 ```
+
+Local sign-in emails land in Inbucket/Mailpit (URL printed by `supabase start`).
 
 From the Android emulator the local API is at `http://10.0.2.2:54321`.
 
@@ -58,7 +63,11 @@ Do not run these against the shared project without agreeing first.
 supabase link --project-ref <ref>
 supabase db push
 supabase secrets set --env-file supabase/functions/.env
+supabase functions deploy match-mentors
+supabase functions deploy tag-preferences
 ```
+
+**Email template (remote, one-time):** in the Supabase dashboard, under Authentication → Emails, paste `supabase/templates/otp_code.html` into both **Magic Link** and **Confirm signup**. It contains `{{ .Token }}`, so users get the 6-digit code that L04 expects instead of a link. The free built-in email sender is rate-limited (a few emails per hour); use the demo sign-in for recordings or add your own SMTP.
 
 ## Environment variables
 
@@ -92,19 +101,35 @@ lib/
     router/      go_router setup, pure role-guard redirect (unit-tested), route names
     supabase/    client init and provider
     theme/       color, type, spacing, radius tokens from Figma; Lucide icon map
-    utils/       Rupiah formatting, NIM masking, UB email check, fee split
-  features/      one folder per feature (onboarding, dev, later learner/mentor/admin)
+    utils/       Rupiah, NIM masking, UB email check, fee split, WIB time, free gaps
+  data/          models, SkillShiftRepository (Supabase + offline sample), Riverpod providers
+  features/      onboarding, auth (L03–L05), learner (L06–L11, sessions list), dev
   shared/widgets Figma components: Button, Chip, Badge, Avatar, Form/*, Navigation/*,
                  Card/Mentor Match, Brand/Logo Mark, Brand/Wordmark
 supabase/
   migrations/    schema, business rules, RLS, storage
   seed.sql       fake UB data (5 mentors, 4 applicants, 15 learners, 1 admin)
+  functions/
+    match-mentors/     rule-based top 3 + Gemini one-line reasons
+    tag-preferences/   saves the quiz, Gemini tags from a fixed vocabulary
+    _shared/           gaps.ts, ranking.ts, tags.ts (pure, Deno-tested), gemini.ts, http.ts
+  templates/     otp_code.html (6-digit sign-in code email)
 tool/            gen_demo_seed.dart
 ```
 
 - **State:** Riverpod 3. **Routing:** go_router with one `StatefulShellRoute` per role. Each role can only open its own area (`/learner`, `/mentor`, `/admin`).
 - **Responsive:** one widget per screen. Below 600 px: phone layout with bottom nav. From 600 to 899 px: the same layout, centered. From 900 px: sidebar and two panes.
 - **Fonts:** Inter is bundled (`assets/fonts/inter`, SIL OFL), so the app works offline.
+- **Time:** all campus times are WIB (UTC+7). Instants are stored as `timestamptz` and shown in WIB whatever the device zone.
+
+### Matching (`match-mentors`)
+
+1. Verified mentors for the course (`mentor_courses`), optionally under a price cap.
+2. Keep mentors who share at least one free gap of 30+ minutes with the learner: Monday to Friday, 07:00 to 17:00 WIB, next 7 days, starting at least an hour from now. Both timetables and both people's open bookings count as busy.
+3. Rank by preference fit (learner tags found in the mentor's teaching tags or bio), then earliest shared slot, then price.
+4. Top 3. One Gemini call per result writes a one-line reason. The prompt gets tags, the mentor's public bio and the slot only, never the learner's name or free-text answer. If Gemini fails or returns something unusable, a fixed template sentence is used and the app says so.
+
+`tag-preferences` sends the learner's open answer to Gemini and keeps only tags from a fixed vocabulary, so the AI cannot invent ranking inputs. A keyword fallback (English and Indonesian) covers Gemini failures. The quiz screen asks learners not to include personal details.
 
 ### Rules enforced in the database
 
@@ -127,7 +152,10 @@ RLS is enabled on every table. Other users' names are exposed only through the `
 | --- | --- |
 | Supabase Auth, Postgres, Storage, RLS | Real |
 | UB email restriction | Real (database trigger) |
-| Gemini tags and match reasons (Phase 2) | Real API call, with a fixed fallback sentence if it fails |
+| Gemini tags and match reasons | Real API call (free tier), with keyword / template fallbacks; labelled "written by AI" in the app |
+| Matching and free-gap calculation | Real, rule-based (Edge Function) |
+| Free-trial booking requests | Real (database enforces one trial per pair) |
+| Debug "Dev preview" | **Offline fake data**, debug builds only, labelled on every screen |
 | Midtrans QRIS and virtual account (Phase 3) | **Sandbox only.** `payments.is_sandbox` is forced to true |
 | Mentor payouts and "Withdraw" (Phase 4) | **Simulated.** Database records only |
 | Seed users, NIMs, timetables, bookings, KHS files | **Fake test data** (`@seed.skillshift.test`, `is_test_data = true`) |
@@ -138,9 +166,11 @@ RLS is enabled on every table. Other users' names are exposed only through the `
 ```bash
 flutter analyze
 flutter test
+cd supabase/functions && deno test _shared/
 ```
 
-Covered so far: the role-guard redirect, formatters (Rupiah, NIM masking, UB email check, fee split), and widget smoke tests for the phone and wide shells.
+- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and an end-to-end learner flow (quiz → matches → profile → free-trial request) in preview mode.
+- **Deno:** free-gap calculation and shared slots (time zones, today's lead time, bookings as busy, 30-minute minimum), ranking order, fallback reasons, tag sanitising and the keyword fallback.
 
 ## Design
 
@@ -154,6 +184,7 @@ This project was built with help from **Claude Code** (Anthropic's AI coding ass
 
 - read the Figma frames and turn the design tokens into Flutter theme code and shared widgets,
 - write the routing, role guards and adaptive layout,
+- write the learner screens and the matching / tagging Edge Functions (the team defined the matching rules),
 - write the Supabase migrations, RLS policies, seed data and helper scripts,
 - write tests and this README.
 

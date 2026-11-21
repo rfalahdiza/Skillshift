@@ -5,6 +5,14 @@ import 'package:skillshift/app.dart';
 import 'package:skillshift/core/auth/app_session.dart';
 import 'package:skillshift/core/auth/session_controller.dart';
 
+/// Lets the offline sample repository's simulated latency finish.
+Future<void> _settleSampleData(WidgetTester tester) async {
+  for (var i = 0; i < 3; i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+  await tester.pumpAndSettle();
+}
+
 /// Smoke test: app boots on the L01 splash, then (with no Supabase config,
 /// as in CI) lands on the welcome screen.
 void main() {
@@ -38,7 +46,7 @@ void main() {
       tester.element(find.byType(SkillShiftApp)),
     );
     container.read(sessionProvider.notifier).startPreview(UserRole.learner);
-    await tester.pumpAndSettle();
+    await _settleSampleData(tester);
 
     for (final label in ['Home', 'Find', 'Sessions', 'Profile']) {
       expect(find.text(label), findsWidgets);
@@ -60,7 +68,7 @@ void main() {
     ProviderScope.containerOf(tester.element(find.byType(SkillShiftApp)))
         .read(sessionProvider.notifier)
         .startPreview(UserRole.learner);
-    await tester.pumpAndSettle();
+    await _settleSampleData(tester);
 
     expect(find.text('Find mentors'), findsOneWidget);
     expect(find.text('Timetable'), findsWidgets);

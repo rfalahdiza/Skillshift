@@ -250,6 +250,15 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
+# Send a 6-digit code (L04) instead of a magic link, for new and returning users.
+[auth.email.template.magic_link]
+subject = "Your SkillShift sign-in code"
+content_path = "./supabase/templates/otp_code.html"
+
+[auth.email.template.confirmation]
+subject = "Your SkillShift sign-in code"
+content_path = "./supabase/templates/otp_code.html"
+
 # Use a production-ready SMTP server
 # [auth.email.smtp]
 # enabled = true

@@ -13,6 +13,15 @@ final sessionProvider = AsyncNotifierProvider<SessionController, AppSession?>(
   SessionController.new,
 );
 
+/// Sign-in error with a message safe to show on screen.
+class SignInException implements Exception {
+  const SignInException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class SessionController extends AsyncNotifier<AppSession?> {
   StreamSubscription<AuthState>? _authSub;
 
@@ -55,6 +64,75 @@ class SessionController extends AsyncNotifier<AppSession?> {
     final client = _client;
     if (client == null || (state.value?.isPreview ?? false)) return;
     state = await AsyncValue.guard(() => _load(client));
+  }
+
+  /// L03: emails a 6-digit sign-in code. New UB users are created on the
+  /// fly; the database rejects non-UB domains (handle_new_user trigger).
+  Future<void> sendCode(String email) => _auth(() async {
+    await _requireClient().auth.signInWithOtp(
+      email: email.trim().toLowerCase(),
+      shouldCreateUser: true,
+    );
+  });
+
+  /// L04: checks the code. On success the auth listener loads the profile
+  /// and the router moves on.
+  Future<void> verifyCode(String email, String code) => _auth(() async {
+    await _requireClient().auth.verifyOTP(
+      email: email.trim().toLowerCase(),
+      token: code,
+      type: OtpType.email,
+    );
+  });
+
+  /// Debug-only sign-in for seeded TEST accounts (@seed.skillshift.test),
+  /// so the demo does not depend on email delivery.
+  Future<void> demoSignIn(String email, String password) => _auth(() async {
+    if (!kDebugMode) throw const SignInException('Not available.');
+    await _requireClient().auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+  });
+
+  SupabaseClient _requireClient() {
+    final c = _client;
+    if (c == null) {
+      throw const SignInException(
+        'Supabase is not configured. Add your .env and restart.',
+      );
+    }
+    return c;
+  }
+
+  Future<void> _auth(Future<void> Function() run) async {
+    try {
+      await run();
+    } on SignInException {
+      rethrow;
+    } on AuthException catch (e) {
+      final m = e.message.toLowerCase();
+      if (m.contains('database error') || m.contains('only ub email')) {
+        throw const SignInException(
+          'Only UB student and staff email addresses can join SkillShift.',
+        );
+      }
+      if (m.contains('expired') || m.contains('invalid')) {
+        throw const SignInException(
+          'That code is wrong or has expired. Check it or send a new one.',
+        );
+      }
+      if (e.statusCode == '429' || m.contains('rate')) {
+        throw const SignInException(
+          'Too many attempts. Wait a minute and try again.',
+        );
+      }
+      throw SignInException(e.message);
+    } catch (_) {
+      throw const SignInException(
+        'Could not reach SkillShift. Check your connection.',
+      );
+    }
   }
 
   /// Saves the role chosen on L05. Admin cannot be self-assigned; the

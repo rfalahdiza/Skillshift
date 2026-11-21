@@ -1,0 +1,15 @@
+<!-- SkillShift sign-in code. Used for both "Magic link" and "Confirm signup"
+     templates so new and returning users get a 6-digit code (L04). -->
+<div style="font-family: Inter, Arial, sans-serif; color: #13304A; max-width: 480px;">
+  <h2 style="margin: 0 0 8px;">Your SkillShift sign-in code</h2>
+  <p style="color: #4D5B68; margin: 0 0 16px;">
+    Enter this code in the app to sign in. It expires in 1 hour.
+  </p>
+  <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 0 0 16px;">
+    {{ .Token }}
+  </p>
+  <p style="color: #8C96A0; font-size: 12px; margin: 0;">
+    If you did not ask for this, you can ignore this email.
+    SkillShift is a student prototype for Universitas Brawijaya (STACK 2026).
+  </p>
+</div>

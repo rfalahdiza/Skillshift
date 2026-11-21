@@ -16,6 +16,13 @@ abstract final class Routes {
   static const learnerTimetable = '/learner/timetable';
   static const learnerSessions = '/learner/sessions';
   static const learnerProfile = '/learner/profile';
+  // Full-screen learner flows (above the shell)
+  static const learnerSetupTimetable = '/learner/setup/timetable'; // L06
+  static const learnerQuiz = '/learner/quiz'; // L07
+  static const learnerSetupQuiz = '/learner/setup/quiz'; // L07 in onboarding
+  static String learnerMentor(String id) => '/learner/mentor/$id'; // L10
+  static String learnerBook(String id) => '/learner/book/$id'; // L11
+  static const learnerCheckout = '/learner/checkout'; // L12 (Phase 3)
 
   // Mentor
   static const mentorHome = '/mentor';
