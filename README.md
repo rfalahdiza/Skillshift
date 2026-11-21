@@ -11,7 +11,7 @@ Peer tutoring for Universitas Brawijaya (UB) students. First-year learners get m
 | 1 | Theme and tokens, shared widgets, routing and role guards, adaptive shell, Supabase schema, RLS, seed | **Done** |
 | 2 | Learner core: L01–L11, matching Edge Function, Gemini tags and reasons | **Done** (free-trial booking; paid checkout is Phase 3) |
 | 3 | Checkout, QRIS (Midtrans sandbox), booking confirmed, attendance: L12–L15 | **Done** |
-| 4 | Mentor: M01–M05 | Planned |
+| 4 | Mentor: M01–M05 | **Done** |
 | 5 | Admin: AD01–AD04, A01–A03 | Planned |
 | 6 | Tablet two-pane polish: T01–T06 | Planned |
 
@@ -105,7 +105,7 @@ lib/
     theme/       color, type, spacing, radius tokens from Figma; Lucide icon map
     utils/       Rupiah, NIM masking, UB email check, fee split, WIB time, free gaps
   data/          models, SkillShiftRepository (Supabase + offline sample), Riverpod providers
-  features/      onboarding, auth (L03–L05), learner (L06–L11, sessions list), dev
+  features/      onboarding, auth (L03–L05), learner (L06–L15), mentor (M01–M05), dev
   shared/widgets Figma components: Button, Chip, Badge, Avatar, Form/*, Navigation/*,
                  Card/Mentor Match, Brand/Logo Mark, Brand/Wordmark
 supabase/
@@ -155,6 +155,8 @@ tool/            gen_demo_seed.dart
 | Payment released only after both learner and mentor confirm | `attendance_release` trigger creates a **simulated** payout |
 | KHS files readable only by the owner and admins | private `khs` bucket, storage policies |
 | Only admins review applications | `review_application()` |
+| Mentors only see and accept paid requests once the payment is held | `respond_to_booking()` (and the M04 filter) |
+| Mentors read a learner's quiz answers only when that learner booked them for the course | `preferences mentor read` policy |
 
 RLS is enabled on every table. Other users' names are exposed only through the `profile_cards` view (no email, no NIM).
 
@@ -169,7 +171,7 @@ RLS is enabled on every table. Other users' names are exposed only through the `
 | Free-trial booking requests | Real (database enforces one trial per pair) |
 | Debug "Dev preview" | **Offline fake data**, debug builds only, labelled on every screen |
 | Midtrans QRIS and virtual account | **Sandbox only.** `payments.is_sandbox` is forced to true, non-sandbox keys are refused, and the UI shows "Midtrans sandbox · test payment" on every payment screen |
-| Mentor payouts and "Withdraw" (Phase 4) | **Simulated.** Database records only |
+| Mentor payouts and "Withdraw (simulated)" | **Simulated.** Database records only; M04 and M05 say so on screen |
 | Seed users, NIMs, timetables, bookings, KHS files | **Fake test data** (`@seed.skillshift.test`, `is_test_data = true`) |
 | Ratings, chat | Not built (out of scope) |
 
@@ -181,7 +183,7 @@ flutter test
 cd supabase/functions && deno test _shared/
 ```
 
-- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance.
+- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance; mentor home (unpaid requests hidden, accept), mentor attendance, simulated earnings, and apply for a course (M01 → M02 → M03).
 - **Deno:** Midtrans status mapping, safe state transitions (duplicate or late notifications), order ids, amounts, webhook signature; free-gap calculation and shared slots (time zones, today's lead time, bookings as busy, 30-minute minimum), ranking order, fallback reasons, tag sanitising and the keyword fallback.
 
 ## Design

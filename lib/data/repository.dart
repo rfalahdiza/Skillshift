@@ -43,6 +43,24 @@ abstract interface class SkillShiftRepository {
   Future<SessionDetail> sessionDetail(String bookingId);
   Future<void> confirmAttendance(String bookingId);
   Future<void> cancelBooking(String bookingId);
+
+  // Phase 4: mentor ---------------------------------------------------------
+
+  Future<MentorOverview> mentorOverview();
+
+  /// Suggested price range for a course (Rp per hour).
+  Future<({int min, int max})> priceRange(String courseId);
+
+  /// M01: uploads the KHS to the private bucket; returns its storage path.
+  Future<String> uploadKhs(List<int> bytes, String fileName);
+  Future<void> submitApplication(ApplicationDraft draft);
+
+  /// M04: bookings where I am the mentor.
+  Future<List<MentorBooking>> mentorBookings();
+  Future<void> respondToBooking(String bookingId, {required bool accept});
+
+  /// M05 (payouts are simulated).
+  Future<Earnings> earnings();
 }
 
 /// Error with a message that is safe to show to the user.

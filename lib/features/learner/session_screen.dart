@@ -239,6 +239,11 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
       return const StatusBadge.pending(label: 'Waiting for payment');
     }
     return switch (b.status) {
+      BookingStatus.requested when !d.iAmLearner => const StatusBadge(
+        'New request · answer it on Home',
+        tone: BadgeTone.info,
+        icon: AppIcons.info,
+      ),
       BookingStatus.requested => StatusBadge.pending(
         label: 'Waiting for $other to accept',
       ),
@@ -309,7 +314,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               '(simulated payout, no real money).';
 
     final actions = <Widget>[
-      if (d.payment?.status == 'pending')
+      if (d.payment?.status == 'pending' && d.iAmLearner)
         AppButton(
           label: 'Complete payment',
           onPressed: () => context.push(Routes.learnerPay(b.id)),

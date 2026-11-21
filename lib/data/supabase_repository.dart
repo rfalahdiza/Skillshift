@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
@@ -335,4 +337,177 @@ class SupabaseRepository implements SkillShiftRepository {
   Future<void> cancelBooking(String bookingId) => _guard(
     () => _db.rpc('cancel_booking', params: {'p_booking_id': bookingId}),
   );
+
+  // Phase 4: mentor ---------------------------------------------------------
+
+  @override
+  Future<MentorOverview> mentorOverview() => _guard(() async {
+    final uid = _uid;
+    final courses = await _db
+        .from('mentor_courses')
+        .select('course_id, price_per_hour, course:courses(name)')
+        .eq('mentor_id', uid);
+    final apps = await _db
+        .from('mentor_applications')
+        .select(
+          'id, course_id, proof_type, gpa, price_per_hour, status, '
+          'created_at, reject_reason, course:courses(name)',
+        )
+        .eq('mentor_id', uid)
+        .order('created_at', ascending: false);
+    return MentorOverview(
+      courses: [
+        for (final c in courses)
+          MentorCourse(
+            courseId: c['course_id'] as String,
+            courseName: (c['course'] as Map?)?['name'] as String? ?? '',
+            pricePerHour: (c['price_per_hour'] as num).toInt(),
+          ),
+      ],
+      applications: [
+        for (final a in apps)
+          MentorApplication(
+            id: a['id'] as String,
+            courseId: a['course_id'] as String,
+            courseName: (a['course'] as Map?)?['name'] as String? ?? '',
+            proofType: a['proof_type'] as String,
+            gpa: (a['gpa'] as num?)?.toDouble(),
+            pricePerHour: (a['price_per_hour'] as num).toInt(),
+            status: ApplicationStatus.parse(a['status'] as String),
+            createdAt: DateTime.parse(a['created_at'] as String).toUtc(),
+            rejectReason: a['reject_reason'] as String?,
+          ),
+      ],
+    );
+  });
+
+  @override
+  Future<({int min, int max})> priceRange(String courseId) => _guard(() async {
+    final rows =
+        await _db.rpc('price_range', params: {'p_course_id': courseId}) as List;
+    final r = rows.first as Map<String, dynamic>;
+    return (
+      min: (r['price_min'] as num).toInt(),
+      max: (r['price_max'] as num).toInt(),
+    );
+  });
+
+  @override
+  Future<String> uploadKhs(List<int> bytes, String fileName) =>
+      _guard(() async {
+        final lower = fileName.toLowerCase();
+        final type = lower.endsWith('.pdf')
+            ? 'application/pdf'
+            : lower.endsWith('.png')
+            ? 'image/png'
+            : 'image/jpeg';
+        final safe = lower.replaceAll(RegExp(r'[^a-z0-9._-]'), '_');
+        final path = '$_uid/${DateTime.now().millisecondsSinceEpoch}_$safe';
+        await _db.storage
+            .from('khs')
+            .uploadBinary(
+              path,
+              Uint8List.fromList(bytes),
+              fileOptions: FileOptions(contentType: type, upsert: false),
+            );
+        return path;
+      });
+
+  @override
+  Future<void> submitApplication(ApplicationDraft d) => _guard(
+    () => _db.from('mentor_applications').insert({
+      'mentor_id': _uid,
+      'course_id': d.courseId,
+      'khs_path': d.khsPath,
+      'proof_type': d.proofType,
+      'gpa': d.gpa,
+      'price_per_hour': d.pricePerHour,
+      'agreed_no_graded_work': true,
+    }),
+  );
+
+  @override
+  Future<List<MentorBooking>> mentorBookings() => _guard(() async {
+    final uid = _uid;
+    final mine = (await myBookings()).where((b) => b.mentorId == uid).toList();
+    final learnerIds = {for (final b in mine) b.learnerId}.toList();
+    final tags = <String, List<String>>{};
+    if (learnerIds.isNotEmpty) {
+      final prefs = await _db
+          .from('learner_preferences')
+          .select('user_id, course_id, ai_tags')
+          .inFilter('user_id', learnerIds);
+      for (final p in prefs) {
+        tags['${p['user_id']}|${p['course_id']}'] =
+            (p['ai_tags'] as List?)?.cast<String>() ?? const [];
+      }
+    }
+    return [
+      for (final b in mine)
+        MentorBooking(
+          booking: b,
+          learnerTags: tags['${b.learnerId}|${b.courseId}'] ?? const [],
+        ),
+    ];
+  });
+
+  @override
+  Future<void> respondToBooking(String bookingId, {required bool accept}) =>
+      _guard(
+        () => _db.rpc(
+          'respond_to_booking',
+          params: {'p_booking_id': bookingId, 'p_accept': accept},
+        ),
+      );
+
+  @override
+  Future<Earnings> earnings() => _guard(() async {
+    final uid = _uid;
+    final rows = await _db
+        .from('payments')
+        .select(
+          'gross, platform_fee, mentor_net, status, '
+          'booking:bookings!inner(id, starts_at, learner_id, mentor_id, '
+          'course:courses(name))',
+        )
+        .eq('booking.mentor_id', uid)
+        .inFilter('status', ['held', 'released']);
+    final learnerIds = {
+      for (final r in rows) (r['booking'] as Map)['learner_id'] as String,
+    }.toList();
+    final names = <String, String>{};
+    if (learnerIds.isNotEmpty) {
+      final people = await _db
+          .from('profile_cards')
+          .select('id, full_name')
+          .inFilter('id', learnerIds);
+      for (final p in people) {
+        names[p['id'] as String] = p['full_name'] as String? ?? '';
+      }
+    }
+    final cfg = await _db
+        .from('app_config')
+        .select('platform_fee_percent')
+        .single();
+    final lines = [
+      for (final r in rows)
+        EarningLine(
+          bookingId: (r['booking'] as Map)['id'] as String,
+          learnerName: names[(r['booking'] as Map)['learner_id']] ?? '',
+          courseName:
+              ((r['booking'] as Map)['course'] as Map?)?['name'] as String? ??
+              '',
+          startsAt: DateTime.parse((r['booking'] as Map)['starts_at'] as String)
+              .toUtc(),
+          gross: (r['gross'] as num).toInt(),
+          fee: (r['platform_fee'] as num).toInt(),
+          net: (r['mentor_net'] as num).toInt(),
+          status: r['status'] as String,
+        ),
+    ]..sort((a, b) => b.startsAt.compareTo(a.startsAt));
+    return Earnings(
+      lines: lines,
+      feePercent: cfg['platform_fee_percent'] as num,
+    );
+  });
 }

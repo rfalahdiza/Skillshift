@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/auth/app_session.dart';
 import '../core/auth/session_controller.dart';
 import '../core/supabase/supabase_providers.dart';
 import 'models.dart';
@@ -12,8 +13,11 @@ final repositoryProvider = Provider<SkillShiftRepository>((ref) {
   final preview = ref.watch(
     sessionProvider.select((s) => s.value?.isPreview ?? false),
   );
+  final role = ref.watch(sessionProvider.select((s) => s.value?.role));
   final client = ref.watch(supabaseClientProvider);
-  if (preview || client == null) return SampleRepository();
+  if (preview || client == null) {
+    return SampleRepository(asMentor: role == UserRole.mentor);
+  }
   return SupabaseRepository(client);
 });
 
@@ -121,3 +125,20 @@ final sessionDetailProvider = FutureProvider.autoDispose
           ref.watch(repositoryProvider).sessionDetail(bookingId),
       retry: (_, _) => null,
     );
+
+// Phase 4: mentor -----------------------------------------------------------
+
+final mentorOverviewProvider = FutureProvider.autoDispose<MentorOverview>(
+  (ref) => ref.watch(repositoryProvider).mentorOverview(),
+  retry: (_, _) => null,
+);
+
+final mentorBookingsProvider = FutureProvider.autoDispose<List<MentorBooking>>(
+  (ref) => ref.watch(repositoryProvider).mentorBookings(),
+  retry: (_, _) => null,
+);
+
+final earningsProvider = FutureProvider.autoDispose<Earnings>(
+  (ref) => ref.watch(repositoryProvider).earnings(),
+  retry: (_, _) => null,
+);

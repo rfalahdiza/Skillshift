@@ -390,3 +390,174 @@ class SessionDetail {
       (booking.status == BookingStatus.requested ||
           booking.status == BookingStatus.accepted);
 }
+
+// ---------------------------------------------------------------------------
+// Phase 4: mentor
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  pending,
+  approved,
+  rejected;
+
+  static ApplicationStatus parse(String v) =>
+      values.firstWhere((s) => s.name == v, orElse: () => pending);
+}
+
+class MentorApplication {
+  const MentorApplication({
+    required this.id,
+    required this.courseId,
+    required this.courseName,
+    required this.proofType,
+    required this.pricePerHour,
+    required this.status,
+    required this.createdAt,
+    this.gpa,
+    this.rejectReason,
+  });
+
+  final String id;
+  final String courseId;
+  final String courseName;
+
+  /// `grade_a` or `gpa`.
+  final String proofType;
+  final double? gpa;
+  final int pricePerHour;
+  final ApplicationStatus status;
+  final DateTime createdAt;
+  final String? rejectReason;
+}
+
+class MentorCourse {
+  const MentorCourse({
+    required this.courseId,
+    required this.courseName,
+    required this.pricePerHour,
+  });
+
+  final String courseId;
+  final String courseName;
+  final int pricePerHour;
+}
+
+/// Where a mentor stands: verified courses and applications.
+class MentorOverview {
+  const MentorOverview({required this.courses, required this.applications});
+
+  final List<MentorCourse> courses;
+  final List<MentorApplication> applications;
+
+  bool get isVerified => courses.isNotEmpty;
+  MentorApplication? get latestPending => applications
+      .where((a) => a.status == ApplicationStatus.pending)
+      .firstOrNull;
+  MentorApplication? get latestRejected => applications
+      .where((a) => a.status == ApplicationStatus.rejected)
+      .firstOrNull;
+}
+
+/// What M02 submits.
+class ApplicationDraft {
+  const ApplicationDraft({
+    required this.courseId,
+    required this.khsPath,
+    required this.proofType,
+    required this.pricePerHour,
+    this.gpa,
+  });
+
+  final String courseId;
+  final String khsPath;
+  final String proofType;
+  final double? gpa;
+  final int pricePerHour;
+}
+
+/// A booking seen by the mentor, with what the learner asked for.
+class MentorBooking {
+  const MentorBooking({required this.booking, this.learnerTags = const []});
+
+  final Booking booking;
+
+  /// From the learner's quiz for this course (AI tags).
+  final List<String> learnerTags;
+
+  /// Paid requests only show once the payment is held.
+  bool get isActionableRequest =>
+      booking.status == BookingStatus.requested &&
+      (booking.isFreeTrial || booking.paymentStatus == 'held');
+
+  String get wantsLine {
+    final words = learnerTags
+        .map((t) => t.replaceAll('_', ' '))
+        .where((t) => t.isNotEmpty)
+        .take(4)
+        .toList();
+    if (words.isEmpty) return 'No preferences shared yet.';
+    return 'Wants: ${words.join(', ')}.';
+  }
+}
+
+/// One row on M05.
+class EarningLine {
+  const EarningLine({
+    required this.bookingId,
+    required this.learnerName,
+    required this.courseName,
+    required this.startsAt,
+    required this.gross,
+    required this.fee,
+    required this.net,
+    required this.status,
+  });
+
+  final String bookingId;
+  final String learnerName;
+  final String courseName;
+  final DateTime startsAt;
+  final int gross;
+  final int fee;
+  final int net;
+
+  /// `held` (on hold) or `released` (simulated payout).
+  final String status;
+}
+
+class Earnings {
+  const Earnings({required this.lines, required this.feePercent});
+
+  final List<EarningLine> lines;
+  final num feePercent;
+
+  int get available =>
+      lines.where((l) => l.status == 'released').fold(0, (s, l) => s + l.net);
+  int get onHold =>
+      lines.where((l) => l.status == 'held').fold(0, (s, l) => s + l.net);
+
+  /// Released this calendar month (WIB is close enough for a summary).
+  int get thisMonth {
+    final now = DateTime.now();
+    return lines
+        .where(
+          (l) =>
+              l.status == 'released' &&
+              l.startsAt.year == now.year &&
+              l.startsAt.month == now.month,
+        )
+        .fold(0, (s, l) => s + l.net);
+  }
+
+  int get paidSessionsThisMonth {
+    final now = DateTime.now();
+    return lines
+        .where(
+          (l) =>
+              l.status == 'released' &&
+              l.startsAt.year == now.year &&
+              l.startsAt.month == now.month,
+        )
+        .length;
+  }
+}

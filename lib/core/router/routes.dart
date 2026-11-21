@@ -35,6 +35,10 @@ abstract final class Routes {
   static const mentorSessions = '/mentor/sessions';
   static const mentorEarnings = '/mentor/earnings';
   static const mentorProfile = '/mentor/profile';
+  static const mentorApply = '/mentor/apply'; // M01
+  static const mentorApplyPrice = '/mentor/apply/price'; // M02
+  static const mentorPending = '/mentor/pending'; // M03
+  static String mentorSession(String bookingId) => '/mentor/session/$bookingId';
 
   // Admin
   static const adminDashboard = '/admin';

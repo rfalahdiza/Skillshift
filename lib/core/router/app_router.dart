@@ -16,6 +16,10 @@ import '../../features/learner/matches_screen.dart';
 import '../../features/learner/mentor_profile_screen.dart';
 import '../../features/learner/quiz_screen.dart';
 import '../../features/learner/timetable_screen.dart';
+import '../../features/mentor/earnings_screen.dart';
+import '../../features/mentor/mentor_apply_screen.dart';
+import '../../features/mentor/mentor_home_screen.dart';
+import '../../features/mentor/mentor_pending_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/onboarding/splash_screen.dart';
 import '../../shared/widgets/phase_placeholder.dart';
@@ -108,6 +112,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             SessionScreen(bookingId: state.pathParameters['id']!),
       ),
+      // Mentor full-screen flows (M01-M03, session detail).
+      GoRoute(
+        path: Routes.mentorApply,
+        builder: (_, _) => const MentorApplyScreen(),
+      ),
+      GoRoute(
+        path: Routes.mentorApplyPrice,
+        builder: (_, state) =>
+            MentorPriceScreen(args: state.extra as ApplyArgs?),
+      ),
+      GoRoute(
+        path: Routes.mentorPending,
+        builder: (_, _) => const MentorPendingScreen(),
+      ),
+      GoRoute(
+        path: '/mentor/session/:id',
+        builder: (_, state) =>
+            SessionScreen(bookingId: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: Routes.devComponents,
         builder: (_, _) => const ComponentGalleryScreen(),
@@ -166,20 +189,21 @@ StatefulShellRoute _mentorShell() => StatefulShellRoute.indexedStack(
   builder: (_, _, shell) =>
       AdaptiveShell(role: UserRole.mentor, navigationShell: shell),
   branches: [
-    _tab(Routes.mentorHome, _ph('Home', 'M04 · T04', 4)),
-    _tab(Routes.mentorSessions, _ph('Sessions', '—', 4)),
+    _tab(Routes.mentorHome, const MentorHomeScreen()),
+    _tab(Routes.mentorSessions, const MentorSessionsScreen()),
+    _tab(Routes.mentorEarnings, const EarningsScreen()),
     _tab(
-      Routes.mentorEarnings,
+      Routes.mentorProfile,
       _ph(
-        'Earnings',
-        'M05 · T05',
-        4,
+        'Profile',
+        '—',
+        6,
+        signOut: true,
         description:
-            'Arrives in Phase 4. Payouts will be simulated: '
-            'no real money is transferred.',
+            'Editing your mentor profile and bio is planned. Ratings and '
+            'chat are not part of this prototype.',
       ),
     ),
-    _tab(Routes.mentorProfile, _ph('Profile', '—', 4, signOut: true)),
   ],
 );
 

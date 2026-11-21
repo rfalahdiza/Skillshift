@@ -7,13 +7,14 @@ import 'repository.dart';
 /// Offline FAKE data for the debug-only "Dev preview". Mirrors the seed and
 /// the Figma frames (Nadia Putri, Raka Pratama, ...). Never used in release.
 class SampleRepository implements SkillShiftRepository {
-  SampleRepository() {
+  /// [asMentor]: preview as Raka Pratama (verified mentor) instead of Nadia.
+  SampleRepository({this.asMentor = false}) {
     _timetable.addAll(_nadiaTimetable());
-    _bookings.addAll(_seedBookings());
+    _bookings.addAll(asMentor ? _mentorSeedBookings() : _seedBookings());
     // Paid sample sessions: payment held by the platform (sandbox).
     for (final b in _bookings.where((b) => !b.isFreeTrial)) {
-      _payments[b.id] = const SessionPayment(
-        status: 'held',
+      _payments[b.id] = SessionPayment(
+        status: b.paymentStatus ?? 'held',
         gross: 25000,
         platformFee: 2500,
         mentorNet: 22500,
@@ -27,6 +28,10 @@ class SampleRepository implements SkillShiftRepository {
 
   static const _latency = Duration(milliseconds: 350);
   static const learnerId = 'preview-learner';
+  final bool asMentor;
+
+  /// The signed-in person in this preview.
+  String get _me => asMentor ? _raka : learnerId;
 
   static const kalkulus = Course(
     id: 'e0000000-0000-4000-8000-000000000001',
@@ -422,9 +427,11 @@ class SampleRepository implements SkillShiftRepository {
     return _delay(
       SessionDetail(
         booking: b,
-        myUserId: learnerId,
-        learnerName: 'Nadia Putri',
-        mentorName: b.counterpartName ?? 'Mentor',
+        myUserId: _me,
+        learnerName: asMentor
+            ? (b.counterpartName ?? 'Learner')
+            : 'Nadia Putri',
+        mentorName: asMentor ? 'Raka Pratama' : (b.counterpartName ?? 'Mentor'),
         confirmedAt: Map.of(_attendance[bookingId] ?? const {}),
         payment: _payments[bookingId],
       ),
@@ -441,7 +448,7 @@ class SampleRepository implements SkillShiftRepository {
         ),
       );
     }
-    (_attendance[bookingId] ??= {})[learnerId] = DateTime.now().toUtc();
+    (_attendance[bookingId] ??= {})[_me] = DateTime.now().toUtc();
     return _delay(null);
   }
 
@@ -460,4 +467,219 @@ class SampleRepository implements SkillShiftRepository {
     }
     return _delay(null);
   }
+
+  // Phase 4: mentor preview (Raka Pratama). FAKE data, payouts SIMULATED. --
+
+  static const _nadia = 'd0000000-0000-4000-8000-000000000001';
+  static const _farhan = 'd0000000-0000-4000-8000-000000000002';
+  final _applications = <MentorApplication>[];
+  final _released = <EarningLine>[];
+  final _tags = <String, List<String>>{
+    _nadia: ['worked_examples', 'limits', 'derivatives', 'patient'],
+    _farhan: ['practice_together', 'exam_prep'],
+  };
+
+  List<Booking> _mentorSeedBookings() {
+    Booking mk(
+      String id,
+      String learner,
+      String name,
+      DateTime at,
+      int minutes,
+      bool trial,
+      BookingStatus st, {
+      String? pay,
+    }) => Booking(
+      id: id,
+      learnerId: learner,
+      mentorId: _raka,
+      courseId: kalkulus.id,
+      courseName: kalkulus.name,
+      startsAt: at,
+      durationMin: minutes,
+      place: 'Gedung F, Lt. 2 study area',
+      isFreeTrial: trial,
+      status: st,
+      counterpartName: name,
+      paymentStatus: pay,
+      gross: trial ? null : 25000,
+    );
+    final now = DateTime.now().toUtc();
+    _released.addAll([
+      EarningLine(
+        bookingId: 'old-1',
+        learnerName: 'Bagas Wicaksono',
+        courseName: 'Kalkulus 1',
+        startsAt: now.subtract(const Duration(days: 1)),
+        gross: 25000,
+        fee: 2500,
+        net: 22500,
+        status: 'released',
+      ),
+      EarningLine(
+        bookingId: 'old-2',
+        learnerName: 'Citra Maharani',
+        courseName: 'Kalkulus 1',
+        startsAt: now.subtract(const Duration(days: 3)),
+        gross: 25000,
+        fee: 2500,
+        net: 22500,
+        status: 'released',
+      ),
+    ]);
+    _applications.add(
+      MentorApplication(
+        id: 'app-1',
+        courseId: kalkulus.id,
+        courseName: kalkulus.name,
+        proofType: 'grade_a',
+        gpa: 3.78,
+        pricePerHour: 25000,
+        status: ApplicationStatus.approved,
+        createdAt: now.subtract(const Duration(days: 30)),
+      ),
+    );
+    return [
+      // Paid request, payment held: can be accepted.
+      mk(
+        'm-1',
+        _nadia,
+        'Nadia Putri',
+        nextWeekday(2, '12:00'),
+        60,
+        false,
+        BookingStatus.requested,
+        pay: 'held',
+      ),
+      // Paid request not paid yet: hidden from the mentor.
+      mk(
+        'm-2',
+        'd0000000-0000-4000-8000-000000000005',
+        'Dewi Anggraini',
+        nextWeekday(3, '12:00'),
+        60,
+        false,
+        BookingStatus.requested,
+        pay: 'pending',
+      ),
+      // Free trial accepted for later this week.
+      mk(
+        'm-3',
+        _farhan,
+        'Farhan Akbar',
+        nextWeekday(4, '09:30'),
+        30,
+        true,
+        BookingStatus.accepted,
+      ),
+      // Session in progress: the mentor can confirm attendance.
+      mk(
+        'm-4',
+        'd0000000-0000-4000-8000-000000000003',
+        'Bagas Wicaksono',
+        now.subtract(const Duration(minutes: 30)),
+        60,
+        false,
+        BookingStatus.accepted,
+        pay: 'held',
+      ),
+    ];
+  }
+
+  @override
+  Future<MentorOverview> mentorOverview() => _delay(
+    MentorOverview(
+      courses: asMentor
+          ? const [
+              MentorCourse(
+                courseId: 'e0000000-0000-4000-8000-000000000001',
+                courseName: 'Kalkulus 1',
+                pricePerHour: 25000,
+              ),
+            ]
+          : const [],
+      applications: List.of(_applications.reversed),
+    ),
+  );
+
+  @override
+  Future<({int min, int max})> priceRange(String courseId) =>
+      _delay((min: 15000, max: 40000));
+
+  @override
+  Future<String> uploadKhs(List<int> bytes, String fileName) =>
+      _delay('preview/$fileName');
+
+  @override
+  Future<void> submitApplication(ApplicationDraft d) {
+    if (_applications.any(
+      (a) => a.courseId == d.courseId && a.status == ApplicationStatus.pending,
+    )) {
+      return Future.error(
+        const UserFacingException(
+          'You already have an application waiting for this course.',
+        ),
+      );
+    }
+    _applications.add(
+      MentorApplication(
+        id: 'app-${_nextId++}',
+        courseId: d.courseId,
+        courseName: _courses.firstWhere((c) => c.id == d.courseId).name,
+        proofType: d.proofType,
+        gpa: d.gpa,
+        pricePerHour: d.pricePerHour,
+        status: ApplicationStatus.pending,
+        createdAt: DateTime.now().toUtc(),
+      ),
+    );
+    return _delay(null);
+  }
+
+  @override
+  Future<List<MentorBooking>> mentorBookings() => _delay([
+    for (final b in _bookings.where((b) => b.mentorId == _me))
+      MentorBooking(booking: b, learnerTags: _tags[b.learnerId] ?? const []),
+  ]);
+
+  @override
+  Future<void> respondToBooking(String bookingId, {required bool accept}) {
+    final b = _bookings.firstWhere((x) => x.id == bookingId);
+    if (accept && !b.isFreeTrial && b.paymentStatus != 'held') {
+      return Future.error(
+        const UserFacingException('The learner has not paid yet'),
+      );
+    }
+    _replace(
+      _copy(
+        b,
+        status: accept ? BookingStatus.accepted : BookingStatus.declined,
+        paymentStatus: !accept && b.paymentStatus == 'held' ? 'refunded' : null,
+      ),
+    );
+    return _delay(null);
+  }
+
+  @override
+  Future<Earnings> earnings() => _delay(
+    Earnings(
+      feePercent: 10,
+      lines: [
+        for (final b in _bookings.where(
+          (b) => b.mentorId == _me && b.paymentStatus == 'held',
+        ))
+          EarningLine(
+            bookingId: b.id,
+            learnerName: b.counterpartName ?? '',
+            courseName: b.courseName,
+            startsAt: b.startsAt,
+            gross: 25000,
+            fee: 2500,
+            net: 22500,
+            status: 'held',
+          ),
+        ..._released,
+      ]..sort((a, b) => b.startsAt.compareTo(a.startsAt)),
+    ),
+  );
 }
