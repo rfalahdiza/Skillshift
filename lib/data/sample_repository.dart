@@ -682,4 +682,268 @@ class SampleRepository implements SkillShiftRepository {
       ]..sort((a, b) => b.startsAt.compareTo(a.startsAt)),
     ),
   );
+
+  // Phase 5: admin preview. FAKE data; payments are Midtrans SANDBOX. ------
+
+  List<AdminApplication>? _adminApps;
+
+  List<AdminApplication> get _apps => _adminApps ??= () {
+    final now = DateTime.now().toUtc();
+    AdminApplication app(
+      String id,
+      String name,
+      String course,
+      String proof,
+      double? gpa,
+      int price,
+      ApplicationStatus st,
+      int hoursAgo, {
+      String program = 'Informatika',
+      int cohort = 2024,
+      String? reason,
+    }) => AdminApplication(
+      application: MentorApplication(
+        id: id,
+        courseId: _courses.firstWhere((c) => c.name == course).id,
+        courseName: course,
+        proofType: proof,
+        gpa: gpa,
+        pricePerHour: price,
+        status: st,
+        createdAt: now.subtract(Duration(hours: hoursAgo)),
+        rejectReason: reason,
+      ),
+      mentorId: 'mentor-$id',
+      mentorName: name,
+      mentorEmail:
+          '${name.toLowerCase().replaceAll(' ', '.')}@seed.skillshift.test',
+      nim: '2451505001110${id.hashCode.abs() % 90 + 10}',
+      program: program,
+      cohortYear: cohort,
+      khsPath: 'preview/sample-khs.pdf',
+      isTestData: true,
+    );
+    return [
+      app(
+        'a1',
+        'Raka Pratama',
+        'Kalkulus 1',
+        'grade_a',
+        3.78,
+        25000,
+        ApplicationStatus.pending,
+        6,
+      ),
+      app(
+        'a2',
+        'Fajar Nugroho',
+        'Struktur Data',
+        'gpa',
+        3.71,
+        25000,
+        ApplicationStatus.pending,
+        9,
+        cohort: 2023,
+      ),
+      app(
+        'a3',
+        'Intan Lestari',
+        'Basis Data',
+        'grade_a',
+        null,
+        22000,
+        ApplicationStatus.pending,
+        11,
+        program: 'Sistem Informasi',
+        cohort: 2023,
+      ),
+      app(
+        'a4',
+        'Bima Saputra',
+        'Fisika Dasar',
+        'gpa',
+        3.42,
+        20000,
+        ApplicationStatus.pending,
+        28,
+        program: 'Teknik Komputer',
+      ),
+      app(
+        'a5',
+        'Aulia Rahma',
+        'Pemrograman Dasar',
+        'grade_a',
+        null,
+        22000,
+        ApplicationStatus.approved,
+        50,
+        cohort: 2023,
+      ),
+      app(
+        'a6',
+        'Yoga Prasetyo',
+        'Pemrograman Dasar',
+        'grade_a',
+        null,
+        24000,
+        ApplicationStatus.rejected,
+        75,
+        program: 'Teknik Komputer',
+        cohort: 2023,
+        reason:
+            'The grade column is blurry. Please upload a clearer scan '
+            'or the PDF from SIAM.',
+      ),
+    ];
+  }();
+
+  @override
+  Future<AdminStats> adminStats() {
+    final pending = _apps
+        .where((a) => a.application.status == ApplicationStatus.pending)
+        .toList();
+    return _delay(
+      AdminStats(
+        pendingApplications: pending.length,
+        verifiedMentors:
+            5 +
+            _apps
+                .where(
+                  (a) =>
+                      a.application.status == ApplicationStatus.approved &&
+                      a.mentorId != 'mentor-a5',
+                )
+                .length,
+        sessionsThisWeek: 23,
+        onHoldAmount: 450000,
+        oldestPending: pending
+            .map((a) => a.application.createdAt)
+            .reduce((a, b) => a.isBefore(b) ? a : b),
+      ),
+    );
+  }
+
+  @override
+  Future<List<ActivityItem>> recentActivity() {
+    final now = DateTime.now().toUtc();
+    return _delay([
+      ActivityItem(
+        kind: ActivityKind.paid,
+        title: 'Nadia paid Rp25.000',
+        subtitle: 'Held for session with Raka · sandbox',
+        at: now.subtract(const Duration(minutes: 2)),
+      ),
+      ActivityItem(
+        kind: ActivityKind.released,
+        title: 'Session confirmed by both',
+        subtitle: 'Rp22.500 released to Aulia (simulated)',
+        at: now.subtract(const Duration(hours: 1)),
+      ),
+      ActivityItem(
+        kind: ActivityKind.applied,
+        title: 'New application: Raka Pratama',
+        subtitle: 'Kalkulus 1',
+        at: now.subtract(const Duration(hours: 2)),
+      ),
+      ActivityItem(
+        kind: ActivityKind.rejected,
+        title: 'Application rejected',
+        subtitle: 'Yoga · Pemrograman Dasar',
+        at: now.subtract(const Duration(days: 1)),
+      ),
+    ]);
+  }
+
+  @override
+  Future<List<AdminApplication>> applications() => _delay(List.of(_apps));
+
+  @override
+  Future<String?> khsUrl(String path) => _delay(null);
+
+  @override
+  Future<void> reviewApplication(
+    String applicationId, {
+    required bool approve,
+    String? reason,
+  }) {
+    final i = _apps.indexWhere((a) => a.application.id == applicationId);
+    final a = _apps[i];
+    if (a.application.status != ApplicationStatus.pending) {
+      return Future.error(
+        const UserFacingException('Application was already reviewed'),
+      );
+    }
+    if (!approve && (reason == null || reason.trim().isEmpty)) {
+      return Future.error(
+        const UserFacingException(
+          'A reason is required to reject an application',
+        ),
+      );
+    }
+    final old = a.application;
+    _apps[i] = AdminApplication(
+      application: MentorApplication(
+        id: old.id,
+        courseId: old.courseId,
+        courseName: old.courseName,
+        proofType: old.proofType,
+        gpa: old.gpa,
+        pricePerHour: old.pricePerHour,
+        status: approve
+            ? ApplicationStatus.approved
+            : ApplicationStatus.rejected,
+        createdAt: old.createdAt,
+        rejectReason: approve ? null : reason!.trim(),
+      ),
+      mentorId: a.mentorId,
+      mentorName: a.mentorName,
+      mentorEmail: a.mentorEmail,
+      nim: a.nim,
+      program: a.program,
+      cohortYear: a.cohortYear,
+      khsPath: a.khsPath,
+      isTestData: a.isTestData,
+    );
+    return _delay(null);
+  }
+
+  @override
+  Future<List<AdminPayment>> adminPayments() {
+    final now = DateTime.now().toUtc();
+    AdminPayment p(String l, String m, String st, int daysAgo, String method) =>
+        AdminPayment(
+          bookingId: 'pay-$l',
+          learnerName: l,
+          mentorName: m,
+          courseName: 'Kalkulus 1',
+          gross: 25000,
+          fee: 2500,
+          net: 22500,
+          status: st,
+          method: method,
+          createdAt: now.subtract(Duration(days: daysAgo)),
+        );
+    return _delay([
+      p('Nadia Putri', 'Raka Pratama', 'held', 0, 'qris'),
+      p('Bagas Wicaksono', 'Raka Pratama', 'released', 8, 'va'),
+      p('Citra Maharani', 'Raka Pratama', 'released', 10, 'qris'),
+      p('Farhan Akbar', 'Dimas Aditya', 'refunded', 1, 'qris'),
+    ]);
+  }
+
+  @override
+  Future<List<Booking>> adminBookings() =>
+      _delay([for (final b in _seedBookings()) _copy(b, status: b.status)]);
+
+  @override
+  Future<AppConfigView> appConfig() => _delay(
+    const AppConfigView(
+      platformFeePercent: 10,
+      priceMin: 15000,
+      priceMax: 40000,
+      freeTrialMinutes: 30,
+      minGpa: 3.5,
+      allowedDomains: ['student.ub.ac.id', 'ub.ac.id'],
+    ),
+  );
 }

@@ -561,3 +561,122 @@ class Earnings {
         .length;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 5: admin
+// ---------------------------------------------------------------------------
+
+/// A mentor application as the admin reviews it.
+class AdminApplication {
+  const AdminApplication({
+    required this.application,
+    required this.mentorId,
+    required this.mentorName,
+    required this.mentorEmail,
+    this.nim,
+    this.program,
+    this.cohortYear,
+    this.khsPath,
+    this.isTestData = false,
+  });
+
+  final MentorApplication application;
+  final String mentorId;
+  final String mentorName;
+  final String mentorEmail;
+  final String? nim;
+  final String? program;
+  final int? cohortYear;
+  final String? khsPath;
+  final bool isTestData;
+
+  /// GPA claims under the minimum get a "Needs check" badge.
+  bool needsCheck(double minGpa) =>
+      application.status == ApplicationStatus.pending &&
+      application.proofType == 'gpa' &&
+      (application.gpa ?? 0) < minGpa;
+
+  String get proofLabel => application.proofType == 'gpa'
+      ? 'GPA ${application.gpa?.toStringAsFixed(2) ?? '—'}'
+      : 'A in course';
+}
+
+class AdminStats {
+  const AdminStats({
+    required this.pendingApplications,
+    required this.verifiedMentors,
+    required this.sessionsThisWeek,
+    required this.onHoldAmount,
+    this.oldestPending,
+  });
+
+  final int pendingApplications;
+  final int verifiedMentors;
+  final int sessionsThisWeek;
+
+  /// Sum of payments currently held (Midtrans sandbox).
+  final int onHoldAmount;
+  final DateTime? oldestPending;
+}
+
+enum ActivityKind { paid, released, applied, rejected, approved }
+
+class ActivityItem {
+  const ActivityItem({
+    required this.kind,
+    required this.title,
+    required this.subtitle,
+    required this.at,
+  });
+
+  final ActivityKind kind;
+  final String title;
+  final String subtitle;
+  final DateTime at;
+}
+
+/// One payment row for the admin (sandbox).
+class AdminPayment {
+  const AdminPayment({
+    required this.bookingId,
+    required this.learnerName,
+    required this.mentorName,
+    required this.courseName,
+    required this.gross,
+    required this.fee,
+    required this.net,
+    required this.status,
+    required this.createdAt,
+    this.method,
+  });
+
+  final String bookingId;
+  final String learnerName;
+  final String mentorName;
+  final String courseName;
+  final int gross;
+  final int fee;
+  final int net;
+  final String status;
+  final String? method;
+  final DateTime createdAt;
+}
+
+/// Read-only view of app_config.
+class AppConfigView {
+  const AppConfigView({
+    required this.platformFeePercent,
+    required this.priceMin,
+    required this.priceMax,
+    required this.freeTrialMinutes,
+    required this.minGpa,
+    required this.allowedDomains,
+  });
+
+  final num platformFeePercent;
+  final int priceMin;
+  final int priceMax;
+  final int freeTrialMinutes;
+  final double minGpa;
+  final List<String> allowedDomains;
+}

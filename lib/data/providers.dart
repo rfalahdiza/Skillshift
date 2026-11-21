@@ -142,3 +142,35 @@ final earningsProvider = FutureProvider.autoDispose<Earnings>(
   (ref) => ref.watch(repositoryProvider).earnings(),
   retry: (_, _) => null,
 );
+
+// Phase 5: admin ------------------------------------------------------------
+
+final adminStatsProvider = FutureProvider.autoDispose<AdminStats>(
+  (ref) => ref.watch(repositoryProvider).adminStats(),
+  retry: (_, _) => null,
+);
+
+final activityProvider = FutureProvider.autoDispose<List<ActivityItem>>(
+  (ref) => ref.watch(repositoryProvider).recentActivity(),
+  retry: (_, _) => null,
+);
+
+final applicationsProvider = FutureProvider.autoDispose<List<AdminApplication>>(
+  (ref) => ref.watch(repositoryProvider).applications(),
+  retry: (_, _) => null,
+);
+
+final adminPaymentsProvider = FutureProvider.autoDispose<List<AdminPayment>>(
+  (ref) => ref.watch(repositoryProvider).adminPayments(),
+  retry: (_, _) => null,
+);
+
+final adminBookingsProvider = FutureProvider.autoDispose<List<Booking>>(
+  (ref) => ref.watch(repositoryProvider).adminBookings(),
+  retry: (_, _) => null,
+);
+
+final appConfigProvider = FutureProvider.autoDispose<AppConfigView>(
+  (ref) => ref.watch(repositoryProvider).appConfig(),
+  retry: (_, _) => null,
+);

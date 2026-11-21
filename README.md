@@ -12,7 +12,7 @@ Peer tutoring for Universitas Brawijaya (UB) students. First-year learners get m
 | 2 | Learner core: L01–L11, matching Edge Function, Gemini tags and reasons | **Done** (free-trial booking; paid checkout is Phase 3) |
 | 3 | Checkout, QRIS (Midtrans sandbox), booking confirmed, attendance: L12–L15 | **Done** |
 | 4 | Mentor: M01–M05 | **Done** |
-| 5 | Admin: AD01–AD04, A01–A03 | Planned |
+| 5 | Admin: AD01–AD04, A01–A03 | **Done** |
 | 6 | Tablet two-pane polish: T01–T06 | Planned |
 
 Screens that are not built yet show a plain "Planned · Phase N" placeholder so nothing planned looks finished.
@@ -105,7 +105,8 @@ lib/
     theme/       color, type, spacing, radius tokens from Figma; Lucide icon map
     utils/       Rupiah, NIM masking, UB email check, fee split, WIB time, free gaps
   data/          models, SkillShiftRepository (Supabase + offline sample), Riverpod providers
-  features/      onboarding, auth (L03–L05), learner (L06–L15), mentor (M01–M05), dev
+  features/      onboarding, auth (L03–L05), learner (L06–L15), mentor (M01–M05),
+                 admin (AD01–AD04, A01–A03, payments, mentors, sessions, settings), dev
   shared/widgets Figma components: Button, Chip, Badge, Avatar, Form/*, Navigation/*,
                  Card/Mentor Match, Brand/Logo Mark, Brand/Wordmark
 supabase/
@@ -133,6 +134,14 @@ tool/            gen_demo_seed.dart
 2. Keep mentors who share at least one free gap of 30+ minutes with the learner: Monday to Friday, 07:00 to 17:00 WIB, next 7 days, starting at least an hour from now. Both timetables and both people's open bookings count as busy.
 3. Rank by preference fit (learner tags found in the mentor's teaching tags or bio), then earliest shared slot, then price.
 4. Top 3. One Gemini call per result writes a one-line reason. The prompt gets tags, the mentor's public bio and the slot only, never the learner's name or free-text answer. If Gemini fails or returns something unusable, a fixed template sentence is used and the app says so.
+
+### Admin review
+
+- Applications are listed oldest first. A GPA claim under `app_config.min_gpa` is marked **Needs check**.
+- The KHS opens through a **signed link that expires after 5 minutes**. The bucket stays private.
+- The system checks the price range and the signed agreement. The admin must confirm three things **by eye** before **Approve** turns on: the name, the grade or GPA, and that the document is clear. There is no OCR, and the screen says so.
+- **Reject** needs a reason (chips or free text), which the applicant sees on M03.
+- `review_application()` approves (and creates the `mentor_courses` row) or rejects, and is admin-only in the database.
 
 ### Payments (`create-payment`, `payment-status`, `midtrans-webhook`)
 
@@ -183,7 +192,7 @@ flutter test
 cd supabase/functions && deno test _shared/
 ```
 
-- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance; mentor home (unpaid requests hidden, accept), mentor attendance, simulated earnings, and apply for a course (M01 → M02 → M03).
+- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance; mentor home (unpaid requests hidden, accept), mentor attendance, simulated earnings, and apply for a course (M01 → M02 → M03); admin dashboard, application tabs and search, approve only after the three manual checks, reject only with a reason, and the wide A01/A03 layouts.
 - **Deno:** Midtrans status mapping, safe state transitions (duplicate or late notifications), order ids, amounts, webhook signature; free-gap calculation and shared slots (time zones, today's lead time, bookings as busy, 30-minute minimum), ranking order, fallback reasons, tag sanitising and the keyword fallback.
 
 ## Design

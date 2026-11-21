@@ -61,6 +61,23 @@ abstract interface class SkillShiftRepository {
 
   /// M05 (payouts are simulated).
   Future<Earnings> earnings();
+
+  // Phase 5: admin ----------------------------------------------------------
+
+  Future<AdminStats> adminStats();
+  Future<List<ActivityItem>> recentActivity();
+  Future<List<AdminApplication>> applications();
+
+  /// Short-lived signed link to the private KHS file (null if missing).
+  Future<String?> khsUrl(String path);
+  Future<void> reviewApplication(
+    String applicationId, {
+    required bool approve,
+    String? reason,
+  });
+  Future<List<AdminPayment>> adminPayments();
+  Future<List<Booking>> adminBookings();
+  Future<AppConfigView> appConfig();
 }
 
 /// Error with a message that is safe to show to the user.

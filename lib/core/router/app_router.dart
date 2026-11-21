@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/dev/component_gallery_screen.dart';
+import '../../features/admin/admin_dashboard_screen.dart';
+import '../../features/admin/admin_lists_screen.dart';
+import '../../features/admin/applications_screen.dart';
+import '../../features/admin/review_screen.dart';
 import '../../features/auth/choose_role_screen.dart';
 import '../../features/auth/sign_in_screen.dart';
 import '../../features/auth/verify_code_screen.dart';
@@ -131,6 +135,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             SessionScreen(bookingId: state.pathParameters['id']!),
       ),
+      // Admin review (AD03 / A03), above the shell.
+      GoRoute(
+        path: '/admin/applications/:id',
+        builder: (_, state) =>
+            ReviewScreen(applicationId: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: Routes.devComponents,
         builder: (_, _) => const ComponentGalleryScreen(),
@@ -211,21 +221,11 @@ StatefulShellRoute _adminShell() => StatefulShellRoute.indexedStack(
   builder: (_, _, shell) =>
       AdaptiveShell(role: UserRole.admin, navigationShell: shell),
   branches: [
-    _tab(Routes.adminDashboard, _ph('Dashboard', 'AD01 · A01', 5)),
-    _tab(Routes.adminApplications, _ph('Applications', 'AD02 · A02', 5)),
-    _tab(Routes.adminMentors, _ph('Mentors', '—', 5)),
-    _tab(Routes.adminSessions, _ph('Sessions', '—', 5)),
-    _tab(
-      Routes.adminPayments,
-      _ph(
-        'Payments',
-        '—',
-        5,
-        description:
-            'Arrives in Phase 5. Payments are Midtrans sandbox '
-            'test transactions only.',
-      ),
-    ),
-    _tab(Routes.adminSettings, _ph('Settings', '—', 5, signOut: true)),
+    _tab(Routes.adminDashboard, const AdminDashboardScreen()),
+    _tab(Routes.adminApplications, const ApplicationsScreen()),
+    _tab(Routes.adminMentors, const AdminMentorsScreen()),
+    _tab(Routes.adminSessions, const AdminSessionsScreen()),
+    _tab(Routes.adminPayments, const AdminPaymentsScreen()),
+    _tab(Routes.adminSettings, const AdminSettingsScreen()),
   ],
 );

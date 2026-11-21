@@ -47,6 +47,8 @@ abstract final class Routes {
   static const adminSessions = '/admin/sessions';
   static const adminPayments = '/admin/payments';
   static const adminSettings = '/admin/settings';
+  static String adminReview(String applicationId) =>
+      '/admin/applications/$applicationId'; // AD03 / A03
 
   // Debug only
   static const devComponents = '/dev/components';
