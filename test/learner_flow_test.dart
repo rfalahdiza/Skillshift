@@ -91,6 +91,76 @@ void main() {
     expect(find.text('Review and pay'), findsOneWidget);
   });
 
+  testWidgets('learner: paid booking → checkout → sandbox pay → booked', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const ProviderScope(child: SkillShiftApp()));
+    await _settle(tester);
+    ProviderScope.containerOf(tester.element(find.byType(SkillShiftApp)))
+        .read(sessionProvider.notifier)
+        .startPreview(UserRole.learner);
+    await _settle(tester);
+
+    await _tap(tester, find.text('Find a mentor'));
+    await _tap(tester, find.text('Kalkulus 1'));
+    await _tap(tester, find.text('Find my mentors'));
+    await _tap(tester, find.text('Raka Pratama'));
+    await _tap(tester, find.text('Book a session'));
+    await _tap(tester, find.text('Review and pay'));
+
+    // L12: pay is disabled until the no-graded-work agreement is ticked.
+    expect(find.text('Review and pay'), findsOneWidget);
+    expect(find.text('Sandbox · test payment'), findsOneWidget);
+    await _tap(tester, find.text('Pay Rp25.000'));
+    expect(find.text('Complete payment'), findsNothing);
+    await _tap(tester, find.textContaining('graded assignments'));
+    await _tap(tester, find.text('Pay Rp25.000'));
+
+    // L13 (preview: simulated, clearly labelled).
+    expect(find.text('Complete payment'), findsOneWidget);
+    expect(find.text('Midtrans sandbox · test payment'), findsOneWidget);
+    expect(find.textContaining('Dev preview: no real payment'), findsOneWidget);
+    await _tap(tester, find.text('Check payment status'));
+
+    // L14.
+    expect(find.text('You’re booked!'), findsOneWidget);
+    expect(find.text('Rp25.000 · held'), findsOneWidget);
+    await _tap(tester, find.text('View session'));
+
+    // L15: request waits for the mentor; cancel is possible before start.
+    expect(find.text('Waiting for Raka to accept'), findsOneWidget);
+    expect(find.text('Cancel session'), findsOneWidget);
+  });
+
+  testWidgets('learner: confirm attendance after the session started', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const ProviderScope(child: SkillShiftApp()));
+    await _settle(tester);
+    ProviderScope.containerOf(tester.element(find.byType(SkillShiftApp)))
+        .read(sessionProvider.notifier)
+        .startPreview(UserRole.learner);
+    await _settle(tester);
+
+    await _tap(tester, find.text('Sessions'));
+    // The sample session that started an hour ago.
+    await _tap(tester, find.textContaining('Rp25.000 · held').first);
+    expect(find.textContaining('confirm attendance'), findsOneWidget);
+    expect(find.textContaining('Rp22.500 goes to Raka'), findsOneWidget);
+    await _tap(tester, find.text('Confirm attendance'));
+
+    expect(find.text('Waiting for Raka'), findsOneWidget);
+    expect(find.text('Confirmed'), findsOneWidget);
+  });
+
   group('slotStarts', () {
     DateTime at(int d, String hhmm) => Wib.fromWall(
       DateTime.utc(2026, 11, d).add(Duration(minutes: parseHm(hhmm))),

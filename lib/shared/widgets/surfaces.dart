@@ -105,7 +105,7 @@ class SectionLabel extends StatelessWidget {
     child: Row(
       children: [
         Expanded(child: Text(text.toUpperCase(), style: AppText.overline)),
-        ?trailing,
+        if (trailing != null) Flexible(child: trailing!),
       ],
     ),
   );

@@ -287,3 +287,106 @@ const kCampusPlaces = [
   CampusPlace('Perpustakaan UB, Lt. 3', 'Quiet zone'),
   CampusPlace('Gedung G, Lt. 1 lounge', 'FILKOM · open seating'),
 ];
+
+// ---------------------------------------------------------------------------
+// Phase 3: payments (Midtrans SANDBOX) and attendance
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  qris('qris', 'QRIS', 'GoPay, OVO, DANA, ShopeePay, m-banking'),
+  va('va', 'Virtual account', 'BCA, BNI, BRI, Mandiri');
+
+  const PaymentMethod(this.db, this.label, this.subtitle);
+  final String db;
+  final String label;
+  final String subtitle;
+}
+
+/// Result of L12 "Pay": the booking and the Snap page to pay on.
+class PaymentStart {
+  const PaymentStart({
+    required this.bookingId,
+    required this.gross,
+    required this.redirectUrl,
+    required this.expiresAt,
+  });
+
+  final String bookingId;
+  final int gross;
+
+  /// Midtrans Snap SANDBOX page (QRIS / VA instructions).
+  final String redirectUrl;
+  final DateTime expiresAt;
+}
+
+/// pending | held | released | refunded | expired | failed
+class PaymentState {
+  const PaymentState({
+    required this.paymentStatus,
+    required this.bookingStatus,
+  });
+
+  final String? paymentStatus;
+  final BookingStatus bookingStatus;
+
+  bool get isPaid => paymentStatus == 'held' || paymentStatus == 'released';
+  bool get isDead => paymentStatus == 'expired' || paymentStatus == 'failed';
+}
+
+class SessionPayment {
+  const SessionPayment({
+    required this.status,
+    required this.gross,
+    required this.platformFee,
+    required this.mentorNet,
+    this.redirectUrl,
+    this.expiresAt,
+  });
+
+  final String status;
+  final int gross;
+  final int platformFee;
+  final int mentorNet;
+  final String? redirectUrl;
+  final DateTime? expiresAt;
+}
+
+/// Everything L14 and L15 show for one booking.
+class SessionDetail {
+  const SessionDetail({
+    required this.booking,
+    required this.myUserId,
+    required this.learnerName,
+    required this.mentorName,
+    required this.confirmedAt,
+    this.payment,
+  });
+
+  final Booking booking;
+  final String myUserId;
+  final String learnerName;
+  final String mentorName;
+
+  /// userId → when they confirmed attendance.
+  final Map<String, DateTime> confirmedAt;
+  final SessionPayment? payment;
+
+  bool get iAmLearner => booking.learnerId == myUserId;
+  String get otherName => iAmLearner ? mentorName : learnerName;
+  String get otherId => iAmLearner ? booking.mentorId : booking.learnerId;
+  bool get iConfirmed => confirmedAt.containsKey(myUserId);
+  bool get otherConfirmed => confirmedAt.containsKey(otherId);
+  bool get hasStarted => !DateTime.now().isBefore(booking.startsAt);
+
+  /// Attendance can be confirmed once an accepted session has started.
+  bool get canConfirm =>
+      hasStarted &&
+      !iConfirmed &&
+      (booking.status == BookingStatus.accepted ||
+          booking.status == BookingStatus.completed);
+
+  bool get canCancel =>
+      !hasStarted &&
+      (booking.status == BookingStatus.requested ||
+          booking.status == BookingStatus.accepted);
+}

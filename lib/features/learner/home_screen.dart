@@ -181,7 +181,7 @@ class _NextSessionCard extends ConsumerWidget {
       borderRadius: Radii.rLg,
       child: InkWell(
         borderRadius: Radii.rLg,
-        onTap: () => context.go(Routes.learnerSessions),
+        onTap: () => context.push(Routes.learnerSession(next.id)),
         child: Padding(
           padding: const EdgeInsets.all(Space.xl),
           child: Column(

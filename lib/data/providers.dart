@@ -113,3 +113,11 @@ MentorMatch? cachedMatch(WidgetRef ref, String mentorId) {
   }
   return null;
 }
+
+/// L14 / L15 detail for one booking. Refreshed after each action.
+final sessionDetailProvider = FutureProvider.autoDispose
+    .family<SessionDetail, String>(
+      (ref, bookingId) =>
+          ref.watch(repositoryProvider).sessionDetail(bookingId),
+      retry: (_, _) => null,
+    );

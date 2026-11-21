@@ -27,6 +27,22 @@ abstract interface class SkillShiftRepository {
 
   Future<List<Booking>> myBookings();
   Future<Booking> requestBooking(BookingRequest request);
+
+  // Phase 3 -----------------------------------------------------------------
+
+  /// L12: creates the paid booking and a Midtrans SANDBOX transaction.
+  Future<PaymentStart> startPaidBooking(
+    BookingRequest request,
+    PaymentMethod method,
+  );
+
+  /// L13: asks the server to check the payment with Midtrans.
+  Future<PaymentState> checkPayment(String bookingId);
+
+  /// L14 / L15.
+  Future<SessionDetail> sessionDetail(String bookingId);
+  Future<void> confirmAttendance(String bookingId);
+  Future<void> cancelBooking(String bookingId);
 }
 
 /// Error with a message that is safe to show to the user.

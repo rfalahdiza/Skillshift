@@ -15,6 +15,7 @@ import '../../shared/widgets/chips.dart';
 import '../../shared/widgets/form_fields.dart';
 import '../../shared/widgets/page_scaffold.dart';
 import '../../shared/widgets/surfaces.dart';
+import 'checkout_screen.dart';
 import 'mentor_profile_screen.dart';
 
 /// Start times (every 30 min) inside the shared gaps on one WIB date.
@@ -83,8 +84,23 @@ class _BookSessionScreenState extends ConsumerState<BookSessionScreen> {
     final m = _match!;
     if (_start == null) return;
     if (!_trial) {
-      // Paid sessions go through checkout (L12, Phase 3).
-      context.push(Routes.learnerCheckout);
+      // Paid sessions go through checkout (L12).
+      context.push(
+        Routes.learnerCheckout,
+        extra: CheckoutArgs(
+          request: BookingRequest(
+            mentorId: m.mentorId,
+            courseId: ref.read(selectedCourseProvider)!,
+            startsAt: _start!,
+            durationMin: _duration,
+            place: _place.name,
+            isFreeTrial: false,
+          ),
+          mentorName: m.fullName,
+          courseName: currentCourseName(ref),
+          pricePerHour: m.pricePerHour,
+        ),
+      );
       return;
     }
     final courseName = currentCourseName(ref);
@@ -465,24 +481,6 @@ class LearnerSessionsScreen extends ConsumerWidget {
                     const SectionLabel('Past'),
                     for (final b in past) _BookingTile(booking: b),
                   ],
-                  const SizedBox(height: Space.lg),
-                  Row(
-                    children: [
-                      const StatusBadge(
-                        'Planned · Phase 3',
-                        tone: BadgeTone.neutral,
-                      ),
-                      const SizedBox(width: Space.sm),
-                      Expanded(
-                        child: Text(
-                          'Session details and attendance',
-                          style: AppText.caption.copyWith(
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ];
               },
             ),
@@ -525,6 +523,7 @@ class _BookingTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: Space.md),
       child: AppCard(
+        onTap: () => context.push(Routes.learnerSession(b.id)),
         child: Row(
           children: [
             AppAvatar(name: b.counterpartName ?? '?'),

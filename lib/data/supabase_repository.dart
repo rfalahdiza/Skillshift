@@ -219,4 +219,120 @@ class SupabaseRepository implements SkillShiftRepository {
       status: BookingStatus.parse(row['status'] as String),
     );
   });
+
+  // Phase 3 -----------------------------------------------------------------
+
+  @override
+  Future<PaymentStart> startPaidBooking(
+    BookingRequest q,
+    PaymentMethod method,
+  ) => _guard(() async {
+    final res = await _db.functions.invoke(
+      'create-payment',
+      body: {
+        'mentor_id': q.mentorId,
+        'course_id': q.courseId,
+        'starts_at': q.startsAt.toUtc().toIso8601String(),
+        'place': q.place,
+        'method': method.db,
+      },
+    );
+    final d = res.data as Map<String, dynamic>;
+    return PaymentStart(
+      bookingId: d['booking_id'] as String,
+      gross: (d['gross'] as num).toInt(),
+      redirectUrl: d['redirect_url'] as String,
+      expiresAt: DateTime.parse(d['expires_at'] as String).toUtc(),
+    );
+  });
+
+  @override
+  Future<PaymentState> checkPayment(String bookingId) => _guard(() async {
+    final res = await _db.functions.invoke(
+      'payment-status',
+      body: {'booking_id': bookingId},
+    );
+    final d = res.data as Map<String, dynamic>;
+    return PaymentState(
+      paymentStatus: d['payment_status'] as String?,
+      bookingStatus: BookingStatus.parse(
+        d['booking_status'] as String? ?? 'requested',
+      ),
+    );
+  });
+
+  @override
+  Future<SessionDetail> sessionDetail(String bookingId) => _guard(() async {
+    final uid = _uid;
+    final r = await _db
+        .from('bookings')
+        .select(
+          '*, course:courses(name), '
+          'payment:payments(status, gross, platform_fee, mentor_net, '
+          'snap_redirect_url, expires_at), '
+          'attendance(user_id, confirmed_at)',
+        )
+        .eq('id', bookingId)
+        .single();
+    final people = await _db
+        .from('profile_cards')
+        .select('id, full_name')
+        .inFilter('id', [r['learner_id'], r['mentor_id']]);
+    String nameOf(Object? id) =>
+        people.where((p) => p['id'] == id).firstOrNull?['full_name']
+            as String? ??
+        '';
+    final pay = r['payment'] as Map<String, dynamic>?;
+    final booking = Booking(
+      id: r['id'] as String,
+      learnerId: r['learner_id'] as String,
+      mentorId: r['mentor_id'] as String,
+      courseId: r['course_id'] as String,
+      courseName: (r['course'] as Map?)?['name'] as String? ?? '',
+      startsAt: DateTime.parse(r['starts_at'] as String).toUtc(),
+      durationMin: (r['duration_min'] as num).toInt(),
+      place: r['place'] as String,
+      isFreeTrial: r['is_free_trial'] as bool,
+      status: BookingStatus.parse(r['status'] as String),
+      counterpartName: nameOf(
+        r['learner_id'] == uid ? r['mentor_id'] : r['learner_id'],
+      ),
+      paymentStatus: pay?['status'] as String?,
+      gross: (pay?['gross'] as num?)?.toInt(),
+    );
+    return SessionDetail(
+      booking: booking,
+      myUserId: uid,
+      learnerName: nameOf(r['learner_id']),
+      mentorName: nameOf(r['mentor_id']),
+      confirmedAt: {
+        for (final a in (r['attendance'] as List? ?? const []))
+          (a as Map)['user_id'] as String: DateTime.parse(
+            a['confirmed_at'] as String,
+          ).toUtc(),
+      },
+      payment: pay == null
+          ? null
+          : SessionPayment(
+              status: pay['status'] as String,
+              gross: (pay['gross'] as num).toInt(),
+              platformFee: (pay['platform_fee'] as num).toInt(),
+              mentorNet: (pay['mentor_net'] as num).toInt(),
+              redirectUrl: pay['snap_redirect_url'] as String?,
+              expiresAt: pay['expires_at'] == null
+                  ? null
+                  : DateTime.parse(pay['expires_at'] as String).toUtc(),
+            ),
+    );
+  });
+
+  @override
+  Future<void> confirmAttendance(String bookingId) => _guard(
+    () => _db.rpc('confirm_attendance', params: {'p_booking_id': bookingId}),
+  );
+
+  @override
+  Future<void> cancelBooking(String bookingId) => _guard(
+    () => _db.rpc('cancel_booking', params: {'p_booking_id': bookingId}),
+  );
 }

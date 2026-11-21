@@ -60,18 +60,27 @@ class StatusBadge extends StatelessWidget {
       BadgeTone.neutral => (AppColors.subtle, AppColors.textSecondary),
       BadgeTone.onDark => (AppColors.surface, AppColors.primaryPressed),
     };
+    final text = Text(
+      label,
+      style: AppText.caption.copyWith(color: fg),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: Radii.rFull),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 13, color: fg),
-            const SizedBox(width: 5),
+      // Shrink the label with "…" only when the parent limits the width.
+      child: LayoutBuilder(
+        builder: (context, c) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 13, color: fg),
+              const SizedBox(width: 5),
+            ],
+            if (c.hasBoundedWidth) Flexible(child: text) else text,
           ],
-          Text(label, style: AppText.caption.copyWith(color: fg)),
-        ],
+        ),
       ),
     );
   }

@@ -8,6 +8,9 @@ import '../../features/auth/choose_role_screen.dart';
 import '../../features/auth/sign_in_screen.dart';
 import '../../features/auth/verify_code_screen.dart';
 import '../../features/learner/book_session_screen.dart';
+import '../../features/learner/checkout_screen.dart';
+import '../../features/learner/payment_screen.dart';
+import '../../features/learner/session_screen.dart';
 import '../../features/learner/home_screen.dart';
 import '../../features/learner/matches_screen.dart';
 import '../../features/learner/mentor_profile_screen.dart';
@@ -85,16 +88,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: Routes.learnerCheckout,
-        builder: (_, _) => const Scaffold(
-          body: PhasePlaceholder(
-            title: 'Review and pay',
-            screenId: 'L12',
-            phase: 3,
-            description:
-                'Paid checkout with QRIS or a virtual account (Midtrans '
-                'sandbox) arrives in Phase 3. Free trials work now.',
-          ),
+        builder: (_, state) =>
+            CheckoutScreen(args: state.extra as CheckoutArgs?),
+      ),
+      GoRoute(
+        path: '/learner/pay/:id',
+        builder: (_, state) => PaymentScreen(
+          bookingId: state.pathParameters['id']!,
+          args: state.extra as PaymentArgs?,
         ),
+      ),
+      GoRoute(
+        path: '/learner/booked/:id',
+        builder: (_, state) =>
+            BookingConfirmedScreen(bookingId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/learner/session/:id',
+        builder: (_, state) =>
+            SessionScreen(bookingId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: Routes.devComponents,

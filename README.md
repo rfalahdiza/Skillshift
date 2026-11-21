@@ -10,7 +10,7 @@ Peer tutoring for Universitas Brawijaya (UB) students. First-year learners get m
 | --- | --- | --- |
 | 1 | Theme and tokens, shared widgets, routing and role guards, adaptive shell, Supabase schema, RLS, seed | **Done** |
 | 2 | Learner core: L01–L11, matching Edge Function, Gemini tags and reasons | **Done** (free-trial booking; paid checkout is Phase 3) |
-| 3 | Checkout, QRIS (Midtrans sandbox), booking confirmed, attendance: L12–L15 | Planned |
+| 3 | Checkout, QRIS (Midtrans sandbox), booking confirmed, attendance: L12–L15 | **Done** |
 | 4 | Mentor: M01–M05 | Planned |
 | 5 | Admin: AD01–AD04, A01–A03 | Planned |
 | 6 | Tablet two-pane polish: T01–T06 | Planned |
@@ -63,9 +63,11 @@ Do not run these against the shared project without agreeing first.
 supabase link --project-ref <ref>
 supabase db push
 supabase secrets set --env-file supabase/functions/.env
-supabase functions deploy match-mentors
-supabase functions deploy tag-preferences
+supabase functions deploy match-mentors tag-preferences create-payment payment-status --use-api
+supabase functions deploy midtrans-webhook --use-api --no-verify-jwt
 ```
+
+**Midtrans sandbox (one-time):** create a free account at the Midtrans sandbox dashboard, copy the **sandbox Server Key** (`SB-Mid-server-…`) into the Supabase secret `MIDTRANS_SERVER_KEY`, and set the Payment Notification URL to `https://<project-ref>.supabase.co/functions/v1/midtrans-webhook`. The functions refuse any key that is not a sandbox key, and refuse to run if `MIDTRANS_IS_PRODUCTION=true`.
 
 **Email template (remote, one-time):** in the Supabase dashboard, under Authentication → Emails, paste `supabase/templates/otp_code.html` into both **Magic Link** and **Confirm signup**. It contains `{{ .Token }}`, so users get the 6-digit code that L04 expects instead of a link. The free built-in email sender is rate-limited (a few emails per hour); use the demo sign-in for recordings or add your own SMTP.
 
@@ -112,6 +114,9 @@ supabase/
   functions/
     match-mentors/     rule-based top 3 + Gemini one-line reasons
     tag-preferences/   saves the quiz, Gemini tags from a fixed vocabulary
+    create-payment/    paid booking (inserted as the user) + Midtrans SANDBOX Snap
+    payment-status/    "Check payment status": asks Midtrans, updates our rows
+    midtrans-webhook/  sandbox notification: signature check, then GET status
     _shared/           gaps.ts, ranking.ts, tags.ts (pure, Deno-tested), gemini.ts, http.ts
   templates/     otp_code.html (6-digit sign-in code email)
 tool/            gen_demo_seed.dart
@@ -128,6 +133,13 @@ tool/            gen_demo_seed.dart
 2. Keep mentors who share at least one free gap of 30+ minutes with the learner: Monday to Friday, 07:00 to 17:00 WIB, next 7 days, starting at least an hour from now. Both timetables and both people's open bookings count as busy.
 3. Rank by preference fit (learner tags found in the mentor's teaching tags or bio), then earliest shared slot, then price.
 4. Top 3. One Gemini call per result writes a one-line reason. The prompt gets tags, the mentor's public bio and the slot only, never the learner's name or free-text answer. If Gemini fails or returns something unusable, a fixed template sentence is used and the app says so.
+
+### Payments (`create-payment`, `payment-status`, `midtrans-webhook`)
+
+1. L12 "Pay": the booking is inserted **with the learner's own token**, so RLS and the booking rules still apply. The price comes from `mentor_courses`, never from the app, and the fee split from `payment_split()`.
+2. A Midtrans **sandbox** Snap transaction is created (QRIS: `other_qris`; VA: BCA, BNI, BRI, Mandiri bill) with a 15-minute expiry and no customer name or email.
+3. L13 opens the Snap page in a WebView on Android, or a browser tab on web. "Check payment status" and the webhook both call `GET /v2/{order_id}/status` and apply the result idempotently: paid → `held`, expired or failed → booking `cancelled`. The amount must match what we charged.
+4. L15: once the session has started, each side taps "Confirm attendance". When both have confirmed, the `attendance_release` trigger releases the payment and writes a **simulated** payout.
 
 `tag-preferences` sends the learner's open answer to Gemini and keeps only tags from a fixed vocabulary, so the AI cannot invent ranking inputs. A keyword fallback (English and Indonesian) covers Gemini failures. The quiz screen asks learners not to include personal details.
 
@@ -156,7 +168,7 @@ RLS is enabled on every table. Other users' names are exposed only through the `
 | Matching and free-gap calculation | Real, rule-based (Edge Function) |
 | Free-trial booking requests | Real (database enforces one trial per pair) |
 | Debug "Dev preview" | **Offline fake data**, debug builds only, labelled on every screen |
-| Midtrans QRIS and virtual account (Phase 3) | **Sandbox only.** `payments.is_sandbox` is forced to true |
+| Midtrans QRIS and virtual account | **Sandbox only.** `payments.is_sandbox` is forced to true, non-sandbox keys are refused, and the UI shows "Midtrans sandbox · test payment" on every payment screen |
 | Mentor payouts and "Withdraw" (Phase 4) | **Simulated.** Database records only |
 | Seed users, NIMs, timetables, bookings, KHS files | **Fake test data** (`@seed.skillshift.test`, `is_test_data = true`) |
 | Ratings, chat | Not built (out of scope) |
@@ -169,8 +181,8 @@ flutter test
 cd supabase/functions && deno test _shared/
 ```
 
-- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and an end-to-end learner flow (quiz → matches → profile → free-trial request) in preview mode.
-- **Deno:** free-gap calculation and shared slots (time zones, today's lead time, bookings as busy, 30-minute minimum), ranking order, fallback reasons, tag sanitising and the keyword fallback.
+- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance.
+- **Deno:** Midtrans status mapping, safe state transitions (duplicate or late notifications), order ids, amounts, webhook signature; free-gap calculation and shared slots (time zones, today's lead time, bookings as busy, 30-minute minimum), ranking order, fallback reasons, tag sanitising and the keyword fallback.
 
 ## Design
 

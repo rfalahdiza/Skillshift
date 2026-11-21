@@ -10,7 +10,20 @@ class SampleRepository implements SkillShiftRepository {
   SampleRepository() {
     _timetable.addAll(_nadiaTimetable());
     _bookings.addAll(_seedBookings());
+    // Paid sample sessions: payment held by the platform (sandbox).
+    for (final b in _bookings.where((b) => !b.isFreeTrial)) {
+      _payments[b.id] = const SessionPayment(
+        status: 'held',
+        gross: 25000,
+        platformFee: 2500,
+        mentorNet: 22500,
+      );
+    }
   }
+
+  static const _raka = 'b0000000-0000-4000-8000-000000000001';
+  final _payments = <String, SessionPayment>{};
+  final _attendance = <String, Map<String, DateTime>>{};
 
   static const _latency = Duration(milliseconds: 350);
   static const learnerId = 'preview-learner';
@@ -102,6 +115,22 @@ class SampleRepository implements SkillShiftRepository {
   }
 
   List<Booking> _seedBookings() => [
+    // Paid session that started 30 min ago: ready for "Confirm attendance".
+    Booking(
+      id: 'bk-now',
+      learnerId: learnerId,
+      mentorId: _raka,
+      courseId: kalkulus.id,
+      courseName: kalkulus.name,
+      startsAt: DateTime.now().toUtc().subtract(const Duration(minutes: 30)),
+      durationMin: 60,
+      place: 'Gedung F, Lt. 2 study area',
+      isFreeTrial: false,
+      status: BookingStatus.accepted,
+      counterpartName: 'Raka Pratama',
+      paymentStatus: 'held',
+      gross: 25000,
+    ),
     // Upcoming paid session with Raka (payment held, sandbox).
     Booking(
       id: 'bk-1',
@@ -316,5 +345,119 @@ class SampleRepository implements SkillShiftRepository {
     );
     _bookings.add(booking);
     return _delay(booking);
+  }
+
+  // Phase 3 (preview only: payments are SIMULATED, nothing is charged) ------
+
+  Booking _copy(Booking b, {BookingStatus? status, String? paymentStatus}) =>
+      Booking(
+        id: b.id,
+        learnerId: b.learnerId,
+        mentorId: b.mentorId,
+        courseId: b.courseId,
+        courseName: b.courseName,
+        startsAt: b.startsAt,
+        durationMin: b.durationMin,
+        place: b.place,
+        isFreeTrial: b.isFreeTrial,
+        status: status ?? b.status,
+        counterpartName: b.counterpartName,
+        paymentStatus: paymentStatus ?? b.paymentStatus,
+        gross: b.gross,
+      );
+
+  void _replace(Booking b) {
+    final i = _bookings.indexWhere((x) => x.id == b.id);
+    if (i >= 0) _bookings[i] = b;
+  }
+
+  @override
+  Future<PaymentStart> startPaidBooking(
+    BookingRequest q,
+    PaymentMethod method,
+  ) async {
+    final booking = await requestBooking(q);
+    const gross = 25000;
+    _payments[booking.id] = SessionPayment(
+      status: 'pending',
+      gross: gross,
+      platformFee: 2500,
+      mentorNet: 22500,
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 15)),
+    );
+    _replace(_copy(booking, paymentStatus: 'pending'));
+    return PaymentStart(
+      bookingId: booking.id,
+      gross: gross,
+      redirectUrl: 'about:blank',
+      expiresAt: _payments[booking.id]!.expiresAt!,
+    );
+  }
+
+  /// Preview: the first check "pays" instantly (simulated, no Midtrans).
+  @override
+  Future<PaymentState> checkPayment(String bookingId) {
+    final p = _payments[bookingId];
+    final b = _bookings.firstWhere((x) => x.id == bookingId);
+    if (p != null && p.status == 'pending') {
+      _payments[bookingId] = SessionPayment(
+        status: 'held',
+        gross: p.gross,
+        platformFee: p.platformFee,
+        mentorNet: p.mentorNet,
+      );
+      _replace(_copy(b, paymentStatus: 'held'));
+    }
+    return _delay(
+      PaymentState(
+        paymentStatus: _payments[bookingId]?.status,
+        bookingStatus: b.status,
+      ),
+    );
+  }
+
+  @override
+  Future<SessionDetail> sessionDetail(String bookingId) {
+    final b = _bookings.firstWhere((x) => x.id == bookingId);
+    return _delay(
+      SessionDetail(
+        booking: b,
+        myUserId: learnerId,
+        learnerName: 'Nadia Putri',
+        mentorName: b.counterpartName ?? 'Mentor',
+        confirmedAt: Map.of(_attendance[bookingId] ?? const {}),
+        payment: _payments[bookingId],
+      ),
+    );
+  }
+
+  @override
+  Future<void> confirmAttendance(String bookingId) {
+    final b = _bookings.firstWhere((x) => x.id == bookingId);
+    if (DateTime.now().isBefore(b.startsAt)) {
+      return Future.error(
+        const UserFacingException(
+          'You can confirm attendance once the session has started',
+        ),
+      );
+    }
+    (_attendance[bookingId] ??= {})[learnerId] = DateTime.now().toUtc();
+    return _delay(null);
+  }
+
+  @override
+  Future<void> cancelBooking(String bookingId) {
+    final b = _bookings.firstWhere((x) => x.id == bookingId);
+    _replace(_copy(b, status: BookingStatus.cancelled));
+    final p = _payments[bookingId];
+    if (p != null && (p.status == 'held' || p.status == 'paid')) {
+      _payments[bookingId] = SessionPayment(
+        status: 'refunded',
+        gross: p.gross,
+        platformFee: p.platformFee,
+        mentorNet: p.mentorNet,
+      );
+    }
+    return _delay(null);
   }
 }

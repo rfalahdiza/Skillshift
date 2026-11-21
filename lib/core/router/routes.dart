@@ -22,7 +22,13 @@ abstract final class Routes {
   static const learnerSetupQuiz = '/learner/setup/quiz'; // L07 in onboarding
   static String learnerMentor(String id) => '/learner/mentor/$id'; // L10
   static String learnerBook(String id) => '/learner/book/$id'; // L11
-  static const learnerCheckout = '/learner/checkout'; // L12 (Phase 3)
+  static const learnerCheckout = '/learner/checkout'; // L12
+  static String learnerPay(String bookingId) =>
+      '/learner/pay/$bookingId'; // L13
+  static String learnerBooked(String bookingId) =>
+      '/learner/booked/$bookingId'; // L14
+  static String learnerSession(String bookingId) =>
+      '/learner/session/$bookingId'; // L15
 
   // Mentor
   static const mentorHome = '/mentor';
