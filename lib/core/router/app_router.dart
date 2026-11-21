@@ -25,8 +25,8 @@ import '../../features/mentor/mentor_apply_screen.dart';
 import '../../features/mentor/mentor_home_screen.dart';
 import '../../features/mentor/mentor_pending_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
+import '../../features/profile/profile_screen.dart';
 import '../../features/onboarding/splash_screen.dart';
-import '../../shared/widgets/phase_placeholder.dart';
 import '../auth/app_session.dart';
 import '../auth/session_controller.dart';
 import '../layout/adaptive_shell.dart';
@@ -158,20 +158,6 @@ StatefulShellBranch _tab(String path, Widget page) => StatefulShellBranch(
   routes: [GoRoute(path: path, builder: (_, _) => page)],
 );
 
-PhasePlaceholder _ph(
-  String title,
-  String id,
-  int phase, {
-  bool signOut = false,
-  String? description,
-}) => PhasePlaceholder(
-  title: title,
-  screenId: id,
-  phase: phase,
-  showSignOut: signOut,
-  description: description,
-);
-
 StatefulShellRoute _learnerShell() => StatefulShellRoute.indexedStack(
   builder: (_, _, shell) =>
       AdaptiveShell(role: UserRole.learner, navigationShell: shell),
@@ -180,18 +166,7 @@ StatefulShellRoute _learnerShell() => StatefulShellRoute.indexedStack(
     _tab(Routes.learnerFind, const MatchesScreen()),
     _tab(Routes.learnerTimetable, const TimetableScreen()),
     _tab(Routes.learnerSessions, const LearnerSessionsScreen()),
-    _tab(
-      Routes.learnerProfile,
-      _ph(
-        'Profile',
-        '—',
-        6,
-        signOut: true,
-        description:
-            'Editing your profile is planned. Ratings and chat are not '
-            'part of this prototype.',
-      ),
-    ),
+    _tab(Routes.learnerProfile, const ProfileScreen(role: UserRole.learner)),
   ],
 );
 
@@ -202,18 +177,7 @@ StatefulShellRoute _mentorShell() => StatefulShellRoute.indexedStack(
     _tab(Routes.mentorHome, const MentorHomeScreen()),
     _tab(Routes.mentorSessions, const MentorSessionsScreen()),
     _tab(Routes.mentorEarnings, const EarningsScreen()),
-    _tab(
-      Routes.mentorProfile,
-      _ph(
-        'Profile',
-        '—',
-        6,
-        signOut: true,
-        description:
-            'Editing your mentor profile and bio is planned. Ratings and '
-            'chat are not part of this prototype.',
-      ),
-    ),
+    _tab(Routes.mentorProfile, const ProfileScreen(role: UserRole.mentor)),
   ],
 );
 

@@ -218,114 +218,116 @@ class _BookSessionScreenState extends ConsumerState<BookSessionScreen> {
         ? const <({DateTime start, bool fits})>[]
         : slotStarts(m.sharedSlots, _date!, _duration);
 
-    return PageScaffold(
-      header: PageHeader(title: 'Book with $first'),
-      body: [
-        const SectionLabel('Session type'),
-        Row(
+    final form = <Widget>[
+      const SectionLabel('Session type'),
+      Row(
+        children: [
+          Expanded(
+            child: _TypeCard(
+              title: 'Free trial · 30 min',
+              subtitle: m.freeTrialAvailable
+                  ? 'Rp0 · first session'
+                  : m.freeTrialUsedOn == null
+                  ? 'Already used'
+                  : 'Used on ${fmtDayMonth(m.freeTrialUsedOn!)}',
+              selected: _trial,
+              enabled: m.freeTrialAvailable,
+              onTap: () => setState(() {
+                _trial = true;
+                _pickFirstFittingStart();
+              }),
+            ),
+          ),
+          const SizedBox(width: Space.md),
+          Expanded(
+            child: _TypeCard(
+              title: 'Paid · 60 min',
+              subtitle: formatRupiah(m.pricePerHour),
+              selected: !_trial,
+              onTap: () => setState(() {
+                _trial = false;
+                _pickFirstFittingStart();
+              }),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: Space.xl),
+      const SectionLabel('Date'),
+      if (dates.isEmpty)
+        Text(
+          'No shared free slot left this week.',
+          style: AppText.small.copyWith(color: AppColors.textSecondary),
+        )
+      else
+        Wrap(
+          spacing: Space.sm,
+          runSpacing: Space.sm,
           children: [
-            Expanded(
-              child: _TypeCard(
-                title: 'Free trial · 30 min',
-                subtitle: m.freeTrialAvailable
-                    ? 'Rp0 · first session'
-                    : m.freeTrialUsedOn == null
-                    ? 'Already used'
-                    : 'Used on ${fmtDayMonth(m.freeTrialUsedOn!)}',
-                selected: _trial,
-                enabled: m.freeTrialAvailable,
+            for (final d in dates)
+              AppChip(
+                label: fmtDayNum(Wib.fromWall(d)),
+                selected: d == _date,
                 onTap: () => setState(() {
-                  _trial = true;
+                  _date = d;
+                  _start = null;
                   _pickFirstFittingStart();
                 }),
               ),
-            ),
-            const SizedBox(width: Space.md),
-            Expanded(
-              child: _TypeCard(
-                title: 'Paid · 60 min',
-                subtitle: formatRupiah(m.pricePerHour),
-                selected: !_trial,
-                onTap: () => setState(() {
-                  _trial = false;
-                  _pickFirstFittingStart();
-                }),
-              ),
-            ),
           ],
         ),
-        const SizedBox(height: Space.xl),
-        const SectionLabel('Date'),
-        if (dates.isEmpty)
-          Text(
-            'No shared free slot left this week.',
-            style: AppText.small.copyWith(color: AppColors.textSecondary),
-          )
-        else
-          Wrap(
-            spacing: Space.sm,
-            runSpacing: Space.sm,
-            children: [
-              for (final d in dates)
-                AppChip(
-                  label: fmtDayNum(Wib.fromWall(d)),
-                  selected: d == _date,
-                  onTap: () => setState(() {
-                    _date = d;
-                    _start = null;
-                    _pickFirstFittingStart();
-                  }),
-                ),
-            ],
-          ),
-        const SizedBox(height: Space.xl),
-        SectionLabel(
-          'Time',
-          trailing: Text(
-            'Shared gaps only',
-            style: AppText.caption.copyWith(color: AppColors.textTertiary),
-          ),
+      const SizedBox(height: Space.xl),
+      SectionLabel(
+        'Time',
+        trailing: Text(
+          'Shared gaps only',
+          style: AppText.caption.copyWith(color: AppColors.textTertiary),
         ),
-        if (starts.isEmpty)
-          Text(
-            'Pick a date first.',
-            style: AppText.small.copyWith(color: AppColors.textSecondary),
-          )
-        else
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: Space.sm,
-            crossAxisSpacing: Space.sm,
-            childAspectRatio: 2.6,
-            children: [
-              for (final s in starts)
-                SlotTile(
-                  label: fmtTime(s.start),
-                  selected: s.start == _start,
-                  enabled: s.fits,
-                  onTap: () => setState(() => _start = s.start),
-                ),
-            ],
-          ),
-        const SizedBox(height: Space.xl),
-        const SectionLabel('Meet on campus'),
-        for (final p in kCampusPlaces) ...[
-          _PlaceCard(
-            place: p,
-            selected: p == _place,
-            onTap: () => setState(() => _place = p),
-          ),
-          const SizedBox(height: Space.md),
-        ],
-        const InfoBanner(
-          tone: BannerTone.info,
-          text:
-              'Sessions happen in person on campus. Your mentor gets a reminder '
-              '30 minutes before.',
+      ),
+      if (starts.isEmpty)
+        Text(
+          'Pick a date first.',
+          style: AppText.small.copyWith(color: AppColors.textSecondary),
+        )
+      else
+        GridView.extent(
+          maxCrossAxisExtent: 140, // ~3 columns on phones, more on tablets
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: Space.sm,
+          crossAxisSpacing: Space.sm,
+          childAspectRatio: 2.6,
+          children: [
+            for (final s in starts)
+              SlotTile(
+                label: fmtTime(s.start),
+                selected: s.start == _start,
+                enabled: s.fits,
+                onTap: () => setState(() => _start = s.start),
+              ),
+          ],
         ),
+      const SizedBox(height: Space.xl),
+      const SectionLabel('Meet on campus'),
+      for (final p in kCampusPlaces) ...[
+        _PlaceCard(
+          place: p,
+          selected: p == _place,
+          onTap: () => setState(() => _place = p),
+        ),
+        const SizedBox(height: Space.md),
       ],
+      const InfoBanner(
+        tone: BannerTone.info,
+        text:
+            'Sessions happen in person on campus. After the session you both '
+            'confirm attendance in the app.',
+      ),
+    ];
+
+    final phone = PageScaffold(
+      header: PageHeader(title: 'Book with $first'),
+      body: form,
       bottom: BottomActionBar(
         children: [
           AppButton(
@@ -334,6 +336,159 @@ class _BookSessionScreenState extends ConsumerState<BookSessionScreen> {
             onPressed: _start == null ? null : _review,
           ),
         ],
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, c) => c.maxWidth < 860 ? phone : _wide(m, form, first),
+    );
+  }
+
+  /// T04: form on the left; summary and payment on the right.
+  Widget _wide(MentorMatch m, List<Widget> form, String first) {
+    final courseName = currentCourseName(ref);
+    final end = _start?.add(Duration(minutes: _duration));
+    final gross = _trial ? 0 : (m.pricePerHour * _duration / 60).round();
+    final summary = AppCard(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              AppAvatar(name: m.fullName, size: 44),
+              const SizedBox(width: Space.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$courseName with $first', style: AppText.h3),
+                    Text(
+                      _trial
+                          ? 'Free trial · 30 min'
+                          : 'Paid session · $_duration min',
+                      style: AppText.small.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: Space.xl),
+          KeyValueRow(
+            icon: AppIcons.calendar,
+            label: 'Date',
+            value: _start == null ? '—' : fmtDate(_start!),
+          ),
+          KeyValueRow(
+            icon: AppIcons.clock,
+            label: 'Time',
+            value: _start == null
+                ? '—'
+                : '${fmtTime(_start!)} to ${fmtTime(end!)}',
+          ),
+          KeyValueRow(icon: AppIcons.pin, label: 'Place', value: _place.name),
+          const Divider(height: Space.xl),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Total',
+                  style: AppText.body.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
+              Text(_trial ? 'Free' : formatRupiah(gross), style: AppText.h2),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final right = <Widget>[
+      summary,
+      const SizedBox(height: Space.xl),
+      if (_start == null)
+        Text(
+          'Pick a date and time to continue.',
+          style: AppText.small.copyWith(color: AppColors.textSecondary),
+        )
+      else if (_trial)
+        AppButton(
+          label: 'Send free trial request',
+          loading: _sending,
+          onPressed: _review,
+        )
+      else
+        PayPanel(
+          // New key per slot so a changed time starts a fresh payment form.
+          key: ValueKey('$_start|${_place.name}'),
+          args: CheckoutArgs(
+            request: BookingRequest(
+              mentorId: m.mentorId,
+              courseId: ref.read(selectedCourseProvider)!,
+              startsAt: _start!,
+              durationMin: _duration,
+              place: _place.name,
+              isFreeTrial: false,
+            ),
+            mentorName: m.fullName,
+            courseName: courseName,
+            pricePerHour: m.pricePerHour,
+          ),
+        ),
+    ];
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(Space.xxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const AppBackButton(),
+                  const SizedBox(width: Space.lg),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Book with $first', style: AppText.h1),
+                      Text(
+                        '$courseName · ${_trial ? 'free trial' : 'paid session'}',
+                        style: AppText.small.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: Space.xl),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AppCard(
+                      padding: const EdgeInsets.all(Space.xl),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: form,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: Space.xl),
+                  SizedBox(
+                    width: 400,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: right,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -246,3 +246,100 @@ class _MethodCard extends StatelessWidget {
     ),
   );
 }
+
+/// T04 right column: pay with + agreement + total + Pay (inline checkout).
+/// Same rules as L12; the server still computes the real amount.
+class PayPanel extends ConsumerStatefulWidget {
+  const PayPanel({super.key, required this.args});
+
+  final CheckoutArgs args;
+
+  @override
+  ConsumerState<PayPanel> createState() => _PayPanelState();
+}
+
+class _PayPanelState extends ConsumerState<PayPanel> {
+  PaymentMethod _method = PaymentMethod.qris;
+  bool _agreed = false;
+  bool _paying = false;
+  String? _error;
+
+  Future<void> _pay() async {
+    setState(() {
+      _paying = true;
+      _error = null;
+    });
+    final router = GoRouter.of(context);
+    try {
+      final start = await ref
+          .read(repositoryProvider)
+          .startPaidBooking(widget.args.request, _method);
+      ref.invalidate(bookingsProvider);
+      router.pushReplacement(
+        Routes.learnerPay(start.bookingId),
+        extra: PaymentArgs(start: start, method: _method),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.args;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionLabel(
+          'Pay with',
+          trailing: const StatusBadge.sandbox(label: 'Sandbox · test payment'),
+        ),
+        for (final m in PaymentMethod.values) ...[
+          _MethodCard(
+            method: m,
+            selected: m == _method,
+            onTap: () => setState(() => _method = m),
+          ),
+          const SizedBox(height: Space.sm),
+        ],
+        const SizedBox(height: Space.sm),
+        CheckRow(
+          value: _agreed,
+          onChanged: (v) => setState(() => _agreed = v),
+          label: 'I won’t ask my mentor to do graded work for me.',
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: Space.md),
+          InfoBanner(tone: BannerTone.danger, text: _error!),
+        ],
+        const SizedBox(height: Space.lg),
+        AppButton(
+          label: 'Pay ${formatRupiah(a.gross)}',
+          loading: _paying,
+          onPressed: _agreed ? _pay : null,
+        ),
+        const SizedBox(height: Space.sm),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              AppIcons.verified,
+              size: 14,
+              color: AppColors.textTertiary,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Held until you both confirm attendance',
+                textAlign: TextAlign.center,
+                style: AppText.caption.copyWith(color: AppColors.textTertiary),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}

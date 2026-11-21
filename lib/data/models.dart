@@ -680,3 +680,52 @@ class AppConfigView {
   final double minGpa;
   final List<String> allowedDomains;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6: profile
+// ---------------------------------------------------------------------------
+
+/// The signed-in user's own profile row.
+class MyProfile {
+  const MyProfile({
+    required this.fullName,
+    required this.email,
+    this.nim,
+    this.program,
+    this.cohortYear,
+    this.bio,
+    this.teachingTags = const [],
+  });
+
+  final String fullName;
+  final String email;
+  final String? nim;
+  final String? program;
+  final int? cohortYear;
+  final String? bio;
+  final List<String> teachingTags;
+}
+
+/// Teaching tags a mentor can pick (same vocabulary the matcher uses,
+/// see supabase/functions/_shared/tags.ts).
+const kTeachingStyles = {
+  'worked_examples': 'Worked examples',
+  'concept_first': 'Concept first',
+  'practice_together': 'Practice together',
+};
+const kTeachingTopics = {
+  'patient': 'Patient',
+  'step_by_step': 'Step by step',
+  'visual': 'Visual',
+  'exam_prep': 'Exam prep',
+  'coding': 'Coding',
+  'debugging': 'Debugging',
+  'limits': 'Limits',
+  'derivatives': 'Derivatives',
+  'integrals': 'Integrals',
+  'physics': 'Physics',
+  'logic': 'Logic',
+  'databases': 'Databases',
+  'data_structures': 'Data structures',
+  'proofs': 'Proofs',
+};

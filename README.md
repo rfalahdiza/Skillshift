@@ -13,9 +13,9 @@ Peer tutoring for Universitas Brawijaya (UB) students. First-year learners get m
 | 3 | Checkout, QRIS (Midtrans sandbox), booking confirmed, attendance: L12–L15 | **Done** |
 | 4 | Mentor: M01–M05 | **Done** |
 | 5 | Admin: AD01–AD04, A01–A03 | **Done** |
-| 6 | Tablet two-pane polish: T01–T06 | Planned |
+| 6 | Tablet polish (T01–T06), profile with mentor bio and teaching tags, switch role | **Done** |
 
-Screens that are not built yet show a plain "Planned · Phase N" placeholder so nothing planned looks finished.
+Anything planned but not built (notifications, ratings, chat, report a problem, editing settings) is marked **Coming soon** or **Planned**, so nothing planned looks finished.
 
 ## Requirements
 
@@ -105,7 +105,7 @@ lib/
     theme/       color, type, spacing, radius tokens from Figma; Lucide icon map
     utils/       Rupiah, NIM masking, UB email check, fee split, WIB time, free gaps
   data/          models, SkillShiftRepository (Supabase + offline sample), Riverpod providers
-  features/      onboarding, auth (L03–L05), learner (L06–L15), mentor (M01–M05),
+  features/      onboarding, auth (L03–L05), learner (L06–L15, T03 week grid), mentor (M01–M05),
                  admin (AD01–AD04, A01–A03, payments, mentors, sessions, settings), dev
   shared/widgets Figma components: Button, Chip, Badge, Avatar, Form/*, Navigation/*,
                  Card/Mentor Match, Brand/Logo Mark, Brand/Wordmark
@@ -169,6 +169,15 @@ tool/            gen_demo_seed.dart
 
 RLS is enabled on every table. Other users' names are exposed only through the `profile_cards` view (no email, no NIM).
 
+## Known limitations
+
+- `assets/brand/logo_mark.svg` is a hand-drawn placeholder until the Figma export is added.
+- Local Supabase (Docker) was not used. Migrations, RLS and functions were tested on the hosted project, with rolled-back SQL checks.
+- On the web, refreshing the browser on the checkout or apply-price screen drops the in-memory form, and the app asks you to start that step again. No data is lost.
+- An unpaid paid booking keeps its slot until the payment is checked or expires (15 minutes).
+- Notifications, ratings, chat, reporting a problem and editing settings in the app are not built.
+- Sign-in by email code needs the OTP template set in the Supabase dashboard (see Remote Supabase). The free email sender is rate-limited.
+
 ## Real vs simulated
 
 | Area | Status |
@@ -192,7 +201,7 @@ flutter test
 cd supabase/functions && deno test _shared/
 ```
 
-- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance; mentor home (unpaid requests hidden, accept), mentor attendance, simulated earnings, and apply for a course (M01 → M02 → M03); admin dashboard, application tabs and search, approve only after the three manual checks, reject only with a reason, and the wide A01/A03 layouts.
+- **Flutter:** role-guard redirect, formatters, free-gap and WIB time helpers, booking slot starts, widget smoke tests for the phone and wide shells, and end-to-end learner flows in preview mode: quiz → matches → profile → free-trial request; paid booking → checkout → (simulated) payment → booked → session; confirm attendance; mentor home (unpaid requests hidden, accept), mentor attendance, simulated earnings, and apply for a course (M01 → M02 → M03); admin dashboard, application tabs and search, approve only after the three manual checks, reject only with a reason, and the wide A01/A03 layouts; mentor teaching profile and role switch; tablet T03 week grid, T04 inline pay and T06 earnings table.
 - **Deno:** Midtrans status mapping, safe state transitions (duplicate or late notifications), order ids, amounts, webhook signature; free-gap calculation and shared slots (time zones, today's lead time, bookings as busy, 30-minute minimum), ranking order, fallback reasons, tag sanitising and the keyword fallback.
 
 ## Design

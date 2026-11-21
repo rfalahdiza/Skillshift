@@ -765,4 +765,40 @@ class SupabaseRepository implements SkillShiftRepository {
       allowedDomains: (c['allowed_email_domains'] as List).cast<String>(),
     );
   });
+
+  // Phase 6: profile ----------------------------------------------------------
+
+  @override
+  Future<MyProfile> myProfile() => _guard(() async {
+    final r = await _db
+        .from('profiles')
+        .select(
+          'full_name, email, nim, program, cohort_year, bio, teaching_tags',
+        )
+        .eq('id', _uid)
+        .single();
+    return MyProfile(
+      fullName: r['full_name'] as String? ?? '',
+      email: r['email'] as String? ?? '',
+      nim: r['nim'] as String?,
+      program: r['program'] as String?,
+      cohortYear: (r['cohort_year'] as num?)?.toInt(),
+      bio: r['bio'] as String?,
+      teachingTags: (r['teaching_tags'] as List?)?.cast<String>() ?? const [],
+    );
+  });
+
+  @override
+  Future<void> updateTeaching({
+    required String bio,
+    required List<String> tags,
+  }) => _guard(
+    () => _db
+        .from('profiles')
+        .update({
+          'bio': bio.trim().isEmpty ? null : bio.trim(),
+          'teaching_tags': tags,
+        })
+        .eq('id', _uid),
+  );
 }

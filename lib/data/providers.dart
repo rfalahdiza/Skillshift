@@ -174,3 +174,10 @@ final appConfigProvider = FutureProvider.autoDispose<AppConfigView>(
   (ref) => ref.watch(repositoryProvider).appConfig(),
   retry: (_, _) => null,
 );
+
+// Phase 6: profile ----------------------------------------------------------
+
+final myProfileProvider = FutureProvider.autoDispose<MyProfile>(
+  (ref) => ref.watch(repositoryProvider).myProfile(),
+  retry: (_, _) => null,
+);

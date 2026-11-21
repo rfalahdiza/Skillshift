@@ -15,6 +15,7 @@ import '../../shared/widgets/form_fields.dart';
 import '../../shared/widgets/page_scaffold.dart';
 import '../../shared/widgets/state_views.dart';
 import '../../shared/widgets/surfaces.dart';
+import 'week_grid.dart';
 
 /// L06 Your timetable. [setup] = onboarding step 1 of 2; otherwise the
 /// learner's Timetable tab.
@@ -29,6 +30,9 @@ class TimetableScreen extends ConsumerStatefulWidget {
 
 class _TimetableScreenState extends ConsumerState<TimetableScreen> {
   late int _day = _initialDay();
+
+  /// Week shown on the T03 grid: 0 = this week, 1 = next week.
+  int _weekOffset = 0;
 
   static int _initialDay() {
     final d = Wib.now().weekday;
@@ -139,7 +143,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
       ),
     ];
 
-    return PageScaffold(
+    final phone = PageScaffold(
       header: PageHeader(
         title: widget.setup ? 'Your timetable' : 'Timetable',
         trailing: widget.setup ? 'Step 1 of 2' : null,
@@ -165,6 +169,108 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
                   onPressed: _add,
                 ),
               ],
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        if (c.maxWidth < 860) return phone;
+        return _wide(timetable, entries, hasClasses);
+      },
+    );
+  }
+
+  /// T03: full-week grid with free gaps and booked sessions.
+  Widget _wide(
+    AsyncValue<List<TimetableEntry>> timetable,
+    List<TimetableEntry> entries,
+    bool hasClasses,
+  ) {
+    final now = Wib.now();
+    final monday = Wib.dateOnly(now)
+        .subtract(Duration(days: now.weekday - 1))
+        .add(Duration(days: 7 * _weekOffset));
+    final bookings = ref.watch(bookingsProvider).value ?? const <Booking>[];
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(Space.xxl),
+          children: [
+            Row(
+              children: [
+                if (widget.setup) ...[
+                  AppBackButton(onPressed: () => context.go(Routes.chooseRole)),
+                  const SizedBox(width: Space.lg),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.setup ? 'Your timetable' : 'Timetable',
+                        style: AppText.h1,
+                      ),
+                      Text(
+                        'Free gaps are where mentors can meet you. Tap a '
+                        'class to remove it.',
+                        style: AppText.small.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AppChip(
+                  label: 'This week',
+                  selected: _weekOffset == 0,
+                  onTap: () => setState(() => _weekOffset = 0),
+                ),
+                const SizedBox(width: Space.sm),
+                AppChip(
+                  label: 'Next week',
+                  selected: _weekOffset == 1,
+                  onTap: () => setState(() => _weekOffset = 1),
+                ),
+                const SizedBox(width: Space.md),
+                AppButton(
+                  label: 'Add class',
+                  icon: AppIcons.plus,
+                  size: AppButtonSize.small,
+                  expand: false,
+                  onPressed: _add,
+                ),
+                if (widget.setup) ...[
+                  const SizedBox(width: Space.sm),
+                  AppButton.secondary(
+                    label: 'Next',
+                    size: AppButtonSize.small,
+                    expand: false,
+                    onPressed: hasClasses
+                        ? () => context.go(Routes.learnerSetupQuiz)
+                        : null,
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: Space.xl),
+            AppCard(
+              padding: const EdgeInsets.all(Space.xl),
+              child: timetable.when(
+                loading: () => const LoadingView(),
+                error: (e, _) => ErrorView(
+                  message: e.toString(),
+                  onRetry: () => ref.invalidate(timetableProvider),
+                ),
+                data: (_) => WeekGrid(
+                  entries: entries,
+                  bookings: bookings,
+                  weekStart: monday,
+                  onTapEntry: _remove,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

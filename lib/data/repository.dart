@@ -78,6 +78,16 @@ abstract interface class SkillShiftRepository {
   Future<List<AdminPayment>> adminPayments();
   Future<List<Booking>> adminBookings();
   Future<AppConfigView> appConfig();
+
+  // Phase 6: profile --------------------------------------------------------
+
+  Future<MyProfile> myProfile();
+
+  /// Mentor bio and teaching tags (used by match-mentors for ranking).
+  Future<void> updateTeaching({
+    required String bio,
+    required List<String> tags,
+  });
 }
 
 /// Error with a message that is safe to show to the user.

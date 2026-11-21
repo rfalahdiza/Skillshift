@@ -946,4 +946,45 @@ class SampleRepository implements SkillShiftRepository {
       allowedDomains: ['student.ub.ac.id', 'ub.ac.id'],
     ),
   );
+
+  // Phase 6: profile (preview, fake) ---------------------------------------
+
+  String? _bio;
+  List<String>? _teachingTags;
+
+  @override
+  Future<MyProfile> myProfile() => _delay(
+    asMentor
+        ? MyProfile(
+            fullName: 'Raka Pratama',
+            email: 'raka.pratama@seed.skillshift.test',
+            nim: '245150500111001',
+            program: 'Informatika',
+            cohortYear: 2024,
+            bio:
+                _bio ??
+                'Second-year Informatika student. I like breaking calculus '
+                    'problems into small steps and checking each one together.',
+            teachingTags:
+                _teachingTags ??
+                const ['worked_examples', 'patient', 'step_by_step', 'limits'],
+          )
+        : const MyProfile(
+            fullName: 'Nadia Putri',
+            email: 'nadia.putri@seed.skillshift.test',
+            nim: '265150200111010',
+            program: 'Informatika',
+            cohortYear: 2026,
+          ),
+  );
+
+  @override
+  Future<void> updateTeaching({
+    required String bio,
+    required List<String> tags,
+  }) {
+    _bio = bio;
+    _teachingTags = List.of(tags);
+    return _delay(null);
+  }
 }

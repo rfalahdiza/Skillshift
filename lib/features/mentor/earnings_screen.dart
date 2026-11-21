@@ -10,6 +10,8 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/badges.dart';
 import '../../shared/widgets/state_views.dart';
 import '../../shared/widgets/surfaces.dart';
+import '../../core/theme/app_icons.dart';
+import '../admin/admin_widgets.dart' show TableHeader;
 
 /// M05 Earnings. Payouts are SIMULATED (database records only) and the
 /// screen says so in several places.
@@ -51,6 +53,18 @@ class EarningsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final earnings = ref.watch(earningsProvider);
+    return LayoutBuilder(
+      builder: (context, c) => c.maxWidth >= 860
+          ? _wide(context, ref, earnings)
+          : _phone(context, ref, earnings),
+    );
+  }
+
+  Widget _phone(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<Earnings> earnings,
+  ) {
     return SafeArea(
       child: RefreshIndicator(
         color: AppColors.primary,
@@ -146,6 +160,184 @@ class EarningsScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// T06: stat cards + table.
+  Widget _wide(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<Earnings> earnings,
+  ) {
+    const flex = [4, 3, 2, 2, 2, 2, 2];
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(Space.xxl),
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Earnings', style: AppText.h1)),
+              AppButton(
+                label: 'Withdraw (simulated)',
+                size: AppButtonSize.small,
+                expand: false,
+                onPressed: () => _withdraw(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: Space.lg),
+          const InfoBanner(
+            tone: BannerTone.warning,
+            text:
+                'Payouts are simulated in this prototype. No real money is '
+                'transferred yet.',
+          ),
+          const SizedBox(height: Space.lg),
+          ...earnings.when(
+            loading: () => [const LoadingView()],
+            error: (e, _) => [ErrorView(message: e.toString())],
+            data: (e) => [
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _Stat(
+                        label: 'Available',
+                        value: formatRupiah(e.available),
+                        hint: 'Ready to withdraw (simulated)',
+                      ),
+                    ),
+                    const SizedBox(width: Space.md),
+                    Expanded(
+                      child: _Stat(
+                        label: 'On hold',
+                        value: formatRupiah(e.onHold),
+                        hint: 'Waiting for attendance confirmation',
+                      ),
+                    ),
+                    const SizedBox(width: Space.md),
+                    Expanded(
+                      child: _Stat(
+                        label: 'This month',
+                        value: formatRupiah(e.thisMonth),
+                        hint: '${e.paidSessionsThisMonth} paid sessions',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Space.xl),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    TableHeader(
+                      columns: [
+                        'Learner',
+                        'Course',
+                        'Date',
+                        'Price',
+                        'Fee (${e.feePercent}%)',
+                        'You get',
+                        'Status',
+                      ],
+                      flex: flex,
+                    ),
+                    if (e.lines.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(Space.xl),
+                        child: Text(
+                          'No paid sessions yet. Free trials do not earn money.',
+                          style: AppText.small.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    for (final (i, l) in e.lines.indexed) ...[
+                      if (i > 0) const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Space.lg,
+                          vertical: Space.md,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: flex[0],
+                              child: Row(
+                                children: [
+                                  AppAvatar(name: l.learnerName, size: 32),
+                                  const SizedBox(width: Space.sm),
+                                  Expanded(
+                                    child: Text(
+                                      l.learnerName,
+                                      style: AppText.smallSemibold,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: flex[1],
+                              child: Text(l.courseName, style: AppText.small),
+                            ),
+                            Expanded(
+                              flex: flex[2],
+                              child: Text(
+                                fmtDate(l.startsAt),
+                                style: AppText.small,
+                              ),
+                            ),
+                            Expanded(
+                              flex: flex[3],
+                              child: Text(
+                                formatRupiah(l.gross),
+                                style: AppText.small,
+                              ),
+                            ),
+                            Expanded(
+                              flex: flex[4],
+                              child: Text(
+                                formatRupiah(l.fee),
+                                style: AppText.small,
+                              ),
+                            ),
+                            Expanded(
+                              flex: flex[5],
+                              child: Text(
+                                formatRupiah(l.net),
+                                style: AppText.smallSemibold,
+                              ),
+                            ),
+                            Expanded(
+                              flex: flex[6],
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: l.status == 'released'
+                                    ? const StatusBadge(
+                                        'Released',
+                                        icon: AppIcons.verified,
+                                      )
+                                    : const StatusBadge(
+                                        'On hold',
+                                        tone: BadgeTone.warning,
+                                        icon: AppIcons.clock,
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
