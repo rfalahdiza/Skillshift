@@ -1,11 +1,11 @@
 {
-    "name": "skillshift",
-    "short_name": "skillshift",
+    "name": "SkillShift",
+    "short_name": "SkillShift",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F4F2EC",
+    "theme_color": "#20A298",
+    "description": "SkillShift: peer tutoring for UB students (prototype).",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

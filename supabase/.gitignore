@@ -1,0 +1,13 @@
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
+
+# Local secrets and generated demo seed (never commit)
+.env
+functions/.env
+seed.local*.sql
