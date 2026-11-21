@@ -87,10 +87,13 @@ final preferenceProvider = FutureProvider.family<LearnerPreference?, String>(
 
 typedef MatchQuery = ({String courseId, int? maxPrice});
 
+/// No automatic retry: every call runs up to 3 Gemini requests (free-tier
+/// quota). On failure the screen shows "Try again" instead.
 final matchesProvider = FutureProvider.family<MatchResult, MatchQuery>(
   (ref, q) => ref
       .watch(repositoryProvider)
       .findMatches(q.courseId, maxPrice: q.maxPrice),
+  retry: (_, _) => null,
 );
 
 /// Finds a match already loaded for [mentorId] (L10/L11 reuse L09 data).

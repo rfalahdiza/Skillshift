@@ -84,7 +84,7 @@ supabase functions deploy tag-preferences
 | Name | Purpose |
 | --- | --- |
 | `GEMINI_API_KEY` | Gemini free tier, called only from Edge Functions |
-| `GEMINI_MODEL` | Model name, configurable (default `gemini-2.5-flash`) |
+| `GEMINI_MODEL` | Model name, configurable (default `gemini-3.8-flash`; `gemini-3.5-flash-lite` is a faster alternative) |
 | `MIDTRANS_SERVER_KEY` | Midtrans **sandbox** server key |
 | `MIDTRANS_IS_PRODUCTION` | Always `false` in this prototype |
 
